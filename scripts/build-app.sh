@@ -14,6 +14,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BrowSpeaker" "$APP/Contents/MacOS/"
 cp Support/Info.plist "$APP/Contents/"
 cp Resources/Readability.js "$APP/Contents/Resources/"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"
 
 # Share extension ("Share › Lire avec Talk to me Bro"), built outside SwiftPM.

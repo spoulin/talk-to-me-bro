@@ -8,6 +8,8 @@
     <string>Talk to me Bro</string>
     <key>CFBundleIdentifier</key>
     <string>local.browspeaker</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleExecutable</key>
     <string>BrowSpeaker</string>
     <key>CFBundlePackageType</key>

@@ -1,3 +1,5 @@
+<img src="Resources/AppIcon.png" width="128" alt="">
+
 # Talk to me Bro
 
 **English** · [Français](README.fr.md)
