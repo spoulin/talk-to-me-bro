@@ -5,6 +5,7 @@ import WebKit
 struct ContentView: View {
     @State private var model = BrowserModel()
     @State private var isDropTargeted = false
+    @State private var showsHistory = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,6 +36,12 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Button { showsHistory.toggle() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
+                    .help("Recently read articles")
+                    .popover(isPresented: $showsHistory, arrowEdge: .bottom) {
+                        HistoryView(model: model) { showsHistory = false }
+                            .frame(width: 400, height: 460)
+                    }
                 if model.phase == .ready {
                     Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
                         .help("Open the original page in the browser")
@@ -83,9 +90,9 @@ private struct WelcomeView: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            Image(systemName: "waveform.circle.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 112, height: 112)
             if model.phase == .loading {
                 Text("Loading article…").font(.title2.weight(.semibold))
                 Text(model.loadingHost).foregroundStyle(.secondary)
@@ -115,6 +122,26 @@ private struct WelcomeView: View {
                         PlaylistView(model: model)
                             .frame(height: 260)
                             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .frame(maxWidth: 460)
+                    .padding(.top, 16)
+                } else if !model.history.items.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Recently read").font(.headline)
+                        ForEach(model.history.items.prefix(5)) { item in
+                            Button { model.reopen(item) } label: {
+                                HStack {
+                                    Image(systemName: "play.circle").foregroundStyle(.tint)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(item.title).lineLimit(1)
+                                        Text(item.site).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                    }
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     .frame(maxWidth: 460)
                     .padding(.top, 16)
@@ -303,6 +330,59 @@ private struct PlaylistView: View {
                     playlist.remove(selection)
                     selection = []
                 }
+            }
+        }
+    }
+}
+
+/// The last articles read: click one to read it again.
+private struct HistoryView: View {
+    let model: BrowserModel
+    var onOpen: () -> Void = {}
+
+    var body: some View {
+        let history = model.history
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Recently read").font(.headline)
+                Spacer()
+                Button("Clear") { history.clear() }
+                    .disabled(history.items.isEmpty)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            if history.items.isEmpty {
+                Text("Articles you listen to will appear here.")
+                    .foregroundStyle(.secondary)
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(history.items) { item in
+                    Button {
+                        model.reopen(item)
+                        onOpen()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title).lineLimit(2)
+                            Text("\(item.site) · \(item.date.formatted(.relative(presentation: .named)))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 2)
+                    .contextMenu {
+                        Button("Add to Playlist") { model.addToPlaylist(item.url) }
+                        Button("Open in Browser") { NSWorkspace.shared.open(item.url) }
+                        Divider()
+                        Button("Remove from History", role: .destructive) { history.remove(item.id) }
+                    }
+                }
+                .scrollContentBackground(.hidden)
             }
         }
     }

@@ -50,6 +50,12 @@ the time left, the playback controls, speed and pauses, voice, and text size.
   reorder, Delete or right-click to remove, *Clear* to empty it, double-click to play one now.
 - The playlist is kept when the app quits; the welcome screen offers to resume it.
 
+## History
+
+The history button (🕘) in the toolbar lists the last 50 articles read; click one to read it again.
+Right-click to add it to the playlist, open it in the browser, or remove it. The welcome screen shows the
+last five.
+
 ## Pronunciation
 
 **Settings › Pronunciation**: a dictionary of words to read differently, e.g. `soccer` → `soqueur`.

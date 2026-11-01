@@ -51,6 +51,12 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
   écouter un article tout de suite.
 - La playlist est conservée quand on quitte l'app ; l'écran d'accueil propose de la reprendre.
 
+## Historique
+
+Le bouton historique (🕘) de la barre d'outils liste les 50 derniers articles lus ; un clic relit
+l'article. Le clic droit permet de l'ajouter à la playlist, de l'ouvrir dans le navigateur ou de le
+retirer. L'écran d'accueil montre les cinq derniers.
+
 ## Prononciation
 
 **Réglages › Prononciation** : un dictionnaire de mots à lire autrement, par exemple `soccer` → `soqueur`.

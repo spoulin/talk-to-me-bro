@@ -19,6 +19,7 @@ final class BrowserModel: NSObject {
     @ObservationIgnored let readerView: WKWebView
     let speech = SpeechController()
     let playlist = Playlist.shared
+    let history = History.shared
 
     private(set) var phase: Phase = .empty
     private(set) var articleTitle = ""
@@ -148,6 +149,15 @@ final class BrowserModel: NSObject {
         return true
     }
 
+    /// Reads an article from the history again, from the start.
+    func reopen(_ item: HistoryItem) {
+        start(item.url)
+    }
+
+    func addToPlaylist(_ url: URL) {
+        showNotice(playlist.add(url) ? String(localized: "Added to playlist") : String(localized: "Already in the playlist"))
+    }
+
     func playNow(_ id: UUID) {
         guard let item = playlist.take(id) else { return }
         start(item.url)
@@ -232,6 +242,7 @@ final class BrowserModel: NSObject {
         blockLengths = blocks.map(\.count)
         position = 0
         phase = .ready
+        if let articleURL { history.record(articleURL, title: articleTitle, site: siteName) }
         speech.speak(blocks, kinds: kinds, language: language, from: 0)
         Self.log.info("Reading started: \(self.speech.state == .speaking, privacy: .public)")
     }

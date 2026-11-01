@@ -109,3 +109,12 @@
 "Announce captions (“Caption: …”)" = "Annoncer les légendes (« Légende : … »)";
 "Caption:" = "Légende :";
 "The text voice is chosen in the player bar. Changes apply from the next paragraph." = "La voix du texte se choisit dans la barre du lecteur. Les changements s’appliquent dès le paragraphe suivant.";
+
+/* History */
+"History" = "Historique";
+"Recently read articles" = "Articles lus récemment";
+"Recently read" = "Lus récemment";
+"Articles you listen to will appear here." = "Les articles que vous écoutez apparaîtront ici.";
+"Add to Playlist" = "Ajouter à la playlist";
+"Remove from History" = "Retirer de l’historique";
+"%@ · %@" = "%1$@ · %2$@";
