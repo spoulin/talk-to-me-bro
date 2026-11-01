@@ -25,7 +25,7 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .top) {
-            if let message = model.errorMessage {
+            if let message = model.errorMessage ?? model.notice {
                 Text(message)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(.regularMaterial, in: Capsule())
@@ -105,6 +105,20 @@ private struct WelcomeView: View {
                 }
                 .font(.callout)
                 .frame(maxWidth: 420, alignment: .leading)
+                if !model.playlist.items.isEmpty {
+                    VStack(spacing: 10) {
+                        Button { model.playNextInPlaylist() } label: {
+                            Label("Play Playlist", systemImage: "play.fill")
+                        }
+                        .controlSize(.large)
+                        .keyboardShortcut(.defaultAction)
+                        PlaylistView(model: model)
+                            .frame(height: 260)
+                            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .frame(maxWidth: 460)
+                    .padding(.top, 16)
+                }
             }
         }
         .padding(40)
@@ -119,6 +133,7 @@ private struct PlayerBar: View {
     @Bindable var speech: SpeechController
     /// The paragraph under the slider while it is being dragged.
     @State private var scrub: Double?
+    @State private var showsPlaylist = false
 
     private var count: Int { model.blockLengths.count }
     private var shown: Int { min(Int((scrub ?? Double(model.position)).rounded()), max(count - 1, 0)) }
@@ -161,10 +176,32 @@ private struct PlayerBar: View {
                     .help("Play / Pause (Space)")
                     Button { model.next() } label: { Image(systemName: "forward.fill").font(.title2) }
                         .help("Next paragraph (→)")
+                    Button { model.closeArticle() } label: { Image(systemName: "forward.end.fill").font(.title3) }
+                        .help("Next article in the playlist")
+                        .disabled(model.playlist.items.isEmpty)
                 }
                 .buttonStyle(.plain)
 
                 HStack(spacing: 16) {
+                    Button { showsPlaylist.toggle() } label: {
+                        Image(systemName: "list.bullet")
+                            .overlay(alignment: .topTrailing) {
+                                if !model.playlist.items.isEmpty {
+                                    Text(verbatim: "\(model.playlist.items.count)")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .background(Capsule().fill(Color.accentColor))
+                                        .offset(x: 10, y: -8)
+                                }
+                            }
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Playlist")
+                    .popover(isPresented: $showsPlaylist, arrowEdge: .top) {
+                        PlaylistView(model: model).frame(width: 380, height: 420)
+                    }
+
                     Menu {
                         Picker("Speed", selection: $speech.speed) {
                             ForEach(SpeechController.speeds, id: \.self) { speed in
@@ -213,6 +250,61 @@ private struct PlayerBar: View {
 
     private func speedLabel(_ speed: Double) -> String {
         speed.formatted(.number.precision(.fractionLength(0...2))) + "×"
+    }
+}
+
+/// The articles waiting after the current one: reorder by dragging, remove
+/// with Delete or the context menu, double-click to play one now.
+private struct PlaylistView: View {
+    let model: BrowserModel
+    @State private var selection = Set<UUID>()
+
+    var body: some View {
+        let playlist = model.playlist
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Up Next").font(.headline)
+                Spacer()
+                Button("Clear") {
+                    playlist.clear()
+                    selection = []
+                }
+                .disabled(playlist.items.isEmpty)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            if playlist.items.isEmpty {
+                Text("Share articles while one is playing to add them here.")
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(selection: $selection) {
+                    ForEach(playlist.items) { item in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.displayTitle).lineLimit(2)
+                            Text(item.displaySite).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(TapGesture(count: 2).onEnded { model.playNow(item.id) })
+                        .contextMenu {
+                            Button("Play Now") { model.playNow(item.id) }
+                            Button("Remove", role: .destructive) { playlist.remove([item.id]) }
+                        }
+                    }
+                    .onMove { playlist.move(fromOffsets: $0, toOffset: $1) }
+                    .onDelete { playlist.remove(atOffsets: $0) }
+                }
+                .scrollContentBackground(.hidden)
+                .onDeleteCommand {
+                    playlist.remove(selection)
+                    selection = []
+                }
+            }
+        }
     }
 }
 

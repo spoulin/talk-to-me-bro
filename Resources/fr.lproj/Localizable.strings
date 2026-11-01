@@ -75,3 +75,15 @@
 "Piper is not installed" = "Piper n’est pas installé";
 "the Piper server didn’t start (details: %@)" = "le serveur Piper n’a pas démarré (détails : %@)";
 "%@ failed. %@" = "%1$@ a échoué. %2$@";
+
+/* Playlist */
+"Added to playlist" = "Ajouté à la playlist";
+"Already in the playlist" = "Déjà dans la playlist";
+"Playlist" = "Playlist";
+"Up Next" = "À suivre";
+"Clear" = "Vider";
+"Play Now" = "Écouter maintenant";
+"Play Playlist" = "Écouter la playlist";
+"Share articles while one is playing to add them here." = "Partagez des articles pendant une lecture pour les ajouter ici.";
+"Next article in the playlist" = "Article suivant de la playlist";
+"Next Article" = "Article suivant";

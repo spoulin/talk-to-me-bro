@@ -106,6 +106,8 @@ final class SpeechController {
     @ObservationIgnored var onBlockStart: ((Int) -> Void)?
     @ObservationIgnored var onWord: ((Int, NSRange) -> Void)?
     @ObservationIgnored var onFinish: (() -> Void)?
+    /// Reading reached the end of the article (not stopped by the user).
+    @ObservationIgnored var onComplete: (() -> Void)?
     @ObservationIgnored var onError: ((String) -> Void)?
 
     @ObservationIgnored private let systemEngine = SystemSpeechEngine()
@@ -127,6 +129,7 @@ final class SpeechController {
                 finished: { [weak self] in
                     self?.engine = nil
                     self?.finish()
+                    self?.onComplete?()
                 },
                 failed: { [weak self] error in self?.fallBackToSystemVoice(after: error, in: name) }
             )
@@ -141,7 +144,12 @@ final class SpeechController {
     func jump(to index: Int) {
         engine?.stop()
         engine = nil
-        guard blocks.indices.contains(index) else { return finish() }
+        guard blocks.indices.contains(index) else {
+            finish()
+            // "Next paragraph" past the last one also ends the article.
+            if index >= blocks.count, !blocks.isEmpty { onComplete?() }
+            return
+        }
         let (engine, voiceID) = resolveEngine()
         self.engine = engine
         currentIndex = index

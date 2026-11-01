@@ -63,6 +63,9 @@ struct BrowserCommands: Commands {
                 .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
             Button("Next Paragraph") { model?.next() }
                 .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+            Button("Next Article") { model?.closeArticle() }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                .disabled(model?.playlist.items.isEmpty ?? true)
         }
     }
 }

@@ -38,6 +38,17 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
 - **Pauses** (menu de la vitesse) : Aucune, Courtes, Moyennes (par défaut) ou Longues, après chaque
   paragraphe et, plus courtes, après chaque phrase, pour un débit moins monotone.
 
+## Playlist
+
+- Partager (ou glisser, ou ⇧⌘V) un article pendant qu'un autre joue ou est en pause : il va dans la
+  **playlist** au lieu de couper la lecture (« Ajouté à la playlist »).
+- Quand un article est lu jusqu'au bout, le suivant démarre tout seul et sort de la liste. ⏭ (ou ⌥⌘↓,
+  ou fermer l'article) passe au suivant.
+- Le bouton playlist de la barre du lecteur (avec le nombre d'articles en attente) ouvre la liste :
+  glisser pour réordonner, Suppr ou clic droit pour retirer, *Vider* pour tout enlever, double-clic pour
+  écouter un article tout de suite.
+- La playlist est conservée quand on quitte l'app ; l'écran d'accueil propose de la reprendre.
+
 ## Choix des voix
 
 Deux moteurs, choisis dans le menu des voix de la barre du lecteur ; tout reste sur le Mac :

@@ -18,6 +18,7 @@ final class BrowserModel: NSObject {
     @ObservationIgnored let webView: WKWebView
     @ObservationIgnored let readerView: WKWebView
     let speech = SpeechController()
+    let playlist = Playlist.shared
 
     private(set) var phase: Phase = .empty
     private(set) var articleTitle = ""
@@ -26,6 +27,8 @@ final class BrowserModel: NSObject {
     private(set) var loadingHost = ""
     private(set) var progress = 0.0
     var errorMessage: String?
+    /// A short confirmation, shown for a moment ("Added to playlist").
+    private(set) var notice: String?
     /// Length of each paragraph, for the progress bar and the time left.
     private(set) var blockLengths: [Int] = []
     /// The paragraph being read, or where reading stopped.
@@ -71,6 +74,7 @@ final class BrowserModel: NSObject {
         }
         speech.onWord = { [weak self] i, r in self?.readerJS("__bs.highlightWord(\(i),\(r.location),\(r.length))") }
         speech.onFinish = { [weak self] in self?.readerJS("__bs.clear()") }
+        speech.onComplete = { [weak self] in self?.playNextInPlaylist() }
         speech.onError = { [weak self] message in self?.errorMessage = message }
     }
 
@@ -80,8 +84,28 @@ final class BrowserModel: NSObject {
     func handleOpenURL(_ url: URL) {
         guard let page = Self.page(for: url) else { return }
         Self.log.info("Shared URL: \(page.absoluteString, privacy: .public)")
-        open(page)
-        NSApp.activate()
+        openOrQueue(page)
+    }
+
+    /// While an article is playing or paused, new ones wait in the playlist;
+    /// otherwise the new one starts right away.
+    private func openOrQueue(_ page: URL) {
+        guard phase == .loading || (phase == .ready && speech.state != .idle) else {
+            start(page)
+            NSApp.activate()
+            return
+        }
+        showNotice(playlist.add(page) ? String(localized: "Added to playlist") : String(localized: "Already in the playlist"))
+        // Stay in the browser so more articles can be queued; a bounce confirms it.
+        NSApp.requestUserAttention(.informationalRequest)
+    }
+
+    private func showNotice(_ text: String) {
+        notice = text
+        Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            if notice == text { notice = nil }
+        }
     }
 
     /// A link pasted or dropped as text. Returns false when it isn't one.
@@ -94,7 +118,7 @@ final class BrowserModel: NSObject {
             errorMessage = String(localized: "“\(String(text.prefix(60)))” is not an article link.")
             return false
         }
-        open(page)
+        openOrQueue(page)
         return true
     }
 
@@ -106,14 +130,28 @@ final class BrowserModel: NSObject {
         if let articleURL { NSWorkspace.shared.open(articleURL) }
     }
 
+    /// Closes the article; the next one in the playlist, if any, starts.
     func closeArticle() {
         speech.stop()
         pendingPage = nil
         webView.stopLoading()
-        phase = .empty
+        if !playNextInPlaylist() { phase = .empty }
     }
 
-    private func open(_ page: URL) {
+    /// Starts the first article of the playlist and removes it from the list.
+    @discardableResult
+    func playNextInPlaylist() -> Bool {
+        guard let next = playlist.popFirst() else { return false }
+        start(next.url)
+        return true
+    }
+
+    func playNow(_ id: UUID) {
+        guard let item = playlist.take(id) else { return }
+        start(item.url)
+    }
+
+    private func start(_ page: URL) {
         speech.stop()
         errorMessage = nil
         pendingPage = page
