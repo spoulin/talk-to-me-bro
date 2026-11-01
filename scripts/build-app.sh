@@ -14,6 +14,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BrowSpeaker" "$APP/Contents/MacOS/"
 cp Support/Info.plist "$APP/Contents/"
 cp Resources/Readability.js "$APP/Contents/Resources/"
+cp -R Resources/*.lproj "$APP/Contents/Resources/"
 
 # Share extension ("Share › Lire avec Talk to me Bro"), built outside SwiftPM.
 EXT="$APP/Contents/PlugIns/BrowSpeakerShare.appex"
@@ -24,6 +25,8 @@ swiftc $OPT -module-name BrowSpeakerShare -application-extension \
     -Xlinker -e -Xlinker _NSExtensionMain \
     ShareExtension/ShareViewController.swift -o "$EXT/Contents/MacOS/BrowSpeakerShare"
 cp ShareExtension/Info.plist "$EXT/Contents/"
+mkdir -p "$EXT/Contents/Resources"
+cp -R ShareExtension/*.lproj "$EXT/Contents/Resources/"
 codesign --force --sign - --entitlements ShareExtension/ShareExtension.entitlements "$EXT"
 
 codesign --force --sign - "$APP"

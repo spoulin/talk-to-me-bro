@@ -36,10 +36,10 @@ struct ContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if model.phase == .ready {
-                    Button { model.openInBrowser() } label: { Label("Ouvrir dans le navigateur", systemImage: "safari") }
-                        .help("Ouvrir la page d'origine dans le navigateur")
-                    Button { model.closeArticle() } label: { Label("Fermer l'article", systemImage: "xmark") }
-                        .help("Fermer l'article")
+                    Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
+                        .help("Open the original page in the browser")
+                    Button { model.closeArticle() } label: { Label("Close Article", systemImage: "xmark") }
+                        .help("Close Article")
                 }
             }
         }
@@ -87,21 +87,21 @@ private struct WelcomeView: View {
                 .font(.system(size: 72))
                 .foregroundStyle(.tint)
             if model.phase == .loading {
-                Text("Chargement de l'article…").font(.title2.weight(.semibold))
+                Text("Loading article…").font(.title2.weight(.semibold))
                 Text(model.loadingHost).foregroundStyle(.secondary)
                 ProgressView(value: model.progress).frame(width: 260)
-                Button("Annuler") { model.closeArticle() }
+                Button("Cancel") { model.closeArticle() }
             } else {
                 Text("Talk to me Bro").font(.largeTitle.weight(.bold))
-                Text("Écoutez vos articles, sans pub ni distraction.")
+                Text("Listen to your articles, without ads or distractions.")
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 8)
                 VStack(alignment: .leading, spacing: 14) {
                     Label {
-                        Text("Dans votre navigateur, ouvrez un article puis choisissez **Partager › Lire avec Talk to me Bro**.")
+                        Text("In your browser, open an article and choose **Share › Read with Talk to me Bro**.")
                     } icon: { Image(systemName: "square.and.arrow.up") }
-                    Label("Ou glissez un lien dans cette fenêtre.", systemImage: "arrow.down.to.line")
-                    Label("Ou copiez un lien, puis ⇧⌘V.", systemImage: "doc.on.clipboard")
+                    Label("Or drag a link into this window.", systemImage: "arrow.down.to.line")
+                    Label("Or copy a link, then press ⇧⌘V.", systemImage: "doc.on.clipboard")
                 }
                 .font(.callout)
                 .frame(maxWidth: 420, alignment: .leading)
@@ -126,7 +126,7 @@ private struct PlayerBar: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                Text("\(shown + 1) / \(count)")
+                Text(verbatim: "\(shown + 1) / \(count)")
                     .frame(width: 70, alignment: .leading)
                 Slider(value: Binding(get: { scrub ?? Double(model.position) }, set: { scrub = $0 }),
                        in: 0...Double(max(count - 1, 1))) { editing in
@@ -152,27 +152,27 @@ private struct PlayerBar: View {
 
                 HStack(spacing: 24) {
                     Button { model.previous() } label: { Image(systemName: "backward.fill").font(.title2) }
-                        .help("Paragraphe précédent (←)")
+                        .help("Previous paragraph (←)")
                     Button { model.togglePlayPause() } label: {
                         Image(systemName: speech.state == .speaking ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 44))
                             .foregroundStyle(.tint)
                     }
-                    .help("Lire / Pause (espace)")
+                    .help("Play / Pause (Space)")
                     Button { model.next() } label: { Image(systemName: "forward.fill").font(.title2) }
-                        .help("Paragraphe suivant (→)")
+                        .help("Next paragraph (→)")
                 }
                 .buttonStyle(.plain)
 
                 HStack(spacing: 16) {
                     Menu {
-                        Picker("Vitesse", selection: $speech.speed) {
+                        Picker("Speed", selection: $speech.speed) {
                             ForEach(SpeechController.speeds, id: \.self) { speed in
                                 Text(speedLabel(speed)).tag(speed)
                             }
                         }
                         .pickerStyle(.inline)
-                        Picker("Pauses entre phrases et paragraphes", selection: $speech.pacing) {
+                        Picker("Pauses between sentences and paragraphs", selection: $speech.pacing) {
                             ForEach(Pacing.allCases) { pacing in
                                 Text(pacing.label).tag(pacing)
                             }
@@ -181,23 +181,23 @@ private struct PlayerBar: View {
                     } label: {
                         Text(speedLabel(speech.speed)).font(.body.monospacedDigit().weight(.medium))
                     }
-                    .help("Vitesse et pauses")
+                    .help("Speed and pauses")
 
                     Menu {
                         VoiceChoices(speech: speech)
                     } label: {
                         Image(systemName: "person.wave.2")
                     }
-                    .help("Voix : \(speech.voiceLabel)")
+                    .help("Voice: \(speech.voiceLabel)")
 
                     Menu {
-                        Button("Agrandir le texte") { model.zoom(by: 1) }
-                        Button("Réduire le texte") { model.zoom(by: -1) }
-                        Button("Taille normale") { model.resetZoom() }
+                        Button("Bigger Text") { model.zoom(by: 1) }
+                        Button("Smaller Text") { model.zoom(by: -1) }
+                        Button("Actual Size") { model.resetZoom() }
                     } label: {
                         Image(systemName: "textformat.size")
                     }
-                    .help("Taille du texte")
+                    .help("Text size")
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
@@ -227,8 +227,8 @@ private struct VoiceChoices: View {
 
     var body: some View {
         let voices = AVVoices.installed()
-        Picker("Voix", selection: $speech.voiceKey) {
-            Text("Voix du système — " + SystemSpeechEngine.systemVoiceDescription).tag(String?.none)
+        Picker("Voice", selection: $speech.voiceKey) {
+            Text("System voice — \(SystemSpeechEngine.systemVoiceDescription)").tag(String?.none)
             Divider()
             ForEach(voices.main) { voice in
                 Text(voice.label).tag(Optional(voice.key))
@@ -241,8 +241,8 @@ private struct VoiceChoices: View {
             }
         }
         .pickerStyle(.inline)
-        Menu("Autres langues") {
-            Picker("Autres langues", selection: $speech.voiceKey) {
+        Menu("Other Languages") {
+            Picker("Other Languages", selection: $speech.voiceKey) {
                 ForEach(voices.others) { voice in
                     Text(voice.label).tag(Optional(voice.key))
                 }
@@ -250,8 +250,8 @@ private struct VoiceChoices: View {
             .pickerStyle(.inline)
         }
         Divider()
-        SettingsLink { Text("Voix Piper…") }
-        Button("Voix macOS (Lire et énoncer)…") {
+        SettingsLink { Text("Piper Voices…") }
+        Button("macOS Voices (Read & Speak)…") {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension?SpokenContent")!)
         }
     }

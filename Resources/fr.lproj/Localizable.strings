@@ -1,0 +1,77 @@
+/* Menus */
+"Listen to Copied Link" = "Écouter le lien copié";
+"Open in Browser" = "Ouvrir dans le navigateur";
+"Close Article" = "Fermer l’article";
+"Bigger Text" = "Agrandir le texte";
+"Smaller Text" = "Réduire le texte";
+"Actual Size" = "Taille normale";
+"Playback" = "Lecture";
+"Pause" = "Pause";
+"Play" = "Lire";
+"Stop" = "Arrêter";
+"Previous Paragraph" = "Paragraphe précédent";
+"Next Paragraph" = "Paragraphe suivant";
+
+/* Welcome screen */
+"Loading article…" = "Chargement de l’article…";
+"Cancel" = "Annuler";
+"Listen to your articles, without ads or distractions." = "Écoutez vos articles, sans pub ni distraction.";
+"In your browser, open an article and choose **Share › Read with Talk to me Bro**." = "Dans votre navigateur, ouvrez un article puis choisissez **Partager › Lire avec Talk to me Bro**.";
+"Or drag a link into this window." = "Ou glissez un lien dans cette fenêtre.";
+"Or copy a link, then press ⇧⌘V." = "Ou copiez un lien, puis ⇧⌘V.";
+
+/* Player */
+"Open the original page in the browser" = "Ouvrir la page d’origine dans le navigateur";
+"Previous paragraph (←)" = "Paragraphe précédent (←)";
+"Play / Pause (Space)" = "Lire / Pause (espace)";
+"Next paragraph (→)" = "Paragraphe suivant (→)";
+"Speed" = "Vitesse";
+"Pauses between sentences and paragraphs" = "Pauses entre phrases et paragraphes";
+"Speed and pauses" = "Vitesse et pauses";
+"Voice: %@" = "Voix : %@";
+"Text size" = "Taille du texte";
+"None" = "Aucune";
+"Short" = "Courtes";
+"Medium" = "Moyennes";
+"Long" = "Longues";
+
+/* Voices */
+"Voice" = "Voix";
+"System voice — %@" = "Voix du système — %@";
+"Other Languages" = "Autres langues";
+"Piper Voices…" = "Voix Piper…";
+"macOS Voices (Read & Speak)…" = "Voix macOS (Lire et énoncer)…";
+"Default voice" = "Voix par défaut";
+" — fallback" = " — remplacement";
+"Premium" = "Premium";
+"Enhanced" = "Améliorée";
+"Standard" = "Standard";
+"%@: %@ — reading with the system voice." = "%1$@ : %2$@ — lecture avec la voix du système.";
+
+/* Errors */
+"“%@” is not an article link." = "« %@ » n’est pas un lien d’article.";
+"Readability.js is missing from the app." = "Readability.js est introuvable dans l’application.";
+"Couldn’t extract the content of this page." = "Impossible d’extraire le contenu de cette page.";
+"This article has no text to read." = "Cet article ne contient pas de texte à lire.";
+
+/* Settings — Piper */
+"By default, the app reads with macOS voices: free, no account, no connection." = "Par défaut, l’app lit avec les voix de macOS : gratuit, sans compte, sans connexion.";
+"Piper Voices (local, free)" = "Voix Piper (locales, gratuites)";
+"Neural voices that run on this Mac: free, no account, and the text never leaves the computer. Requires Python 3; about 200 MB for Piper, then 30 to 80 MB per voice." = "Voix neuronales qui tournent sur ce Mac : gratuites, sans compte, et le texte ne quitte pas l’ordinateur. Nécessite Python 3 ; environ 200 Mo pour Piper, puis 30 à 80 Mo par voix.";
+"Install Piper" = "Installer Piper";
+"No voice installed." = "Aucune voix installée.";
+"Remove" = "Supprimer";
+"Voices to download (%lld)" = "Voix à télécharger (%lld)";
+"%lld MB" = "%lld Mo";
+"Download" = "Télécharger";
+"Uninstall Piper" = "Désinstaller Piper";
+"Installing Piper (about 200 MB)…" = "Installation de Piper (environ 200 Mo)…";
+"Python 3.9 or later is required (python.org or “brew install python”)." = "Python 3.9 ou plus récent est requis (python.org ou « brew install python »).";
+"Piper is installed. Download a voice below." = "Piper est installé. Téléchargez une voix ci-dessous.";
+"Downloading %@…" = "Téléchargement de %@…";
+"%@ is ready: pick it from the voice menu." = "%@ est prête : choisissez-la dans le menu des voix.";
+"Failed: %@" = "Échec : %@";
+"the Piper server returned %lld" = "le serveur Piper a répondu %lld";
+"Piper is not installed" = "Piper n’est pas installé";
+"the Piper server didn’t start (details: %@)" = "le serveur Piper n’a pas démarré (détails : %@)";
+"%@ failed. %@" = "%1$@ a échoué. %2$@";

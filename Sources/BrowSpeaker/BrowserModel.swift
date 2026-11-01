@@ -91,7 +91,7 @@ final class BrowserModel: NSObject {
         let candidate = text.contains("://") ? URL(string: text)
             : (!text.contains(" ") && text.contains(".")) ? URL(string: "https://" + text) : nil
         guard let candidate, let page = Self.page(for: candidate) else {
-            errorMessage = "« \(text.prefix(60)) » n'est pas un lien d'article."
+            errorMessage = String(localized: "“\(String(text.prefix(60)))” is not an article link.")
             return false
         }
         open(page)
@@ -163,11 +163,11 @@ final class BrowserModel: NSObject {
     private func extractArticle() async {
         guard let page = pendingPage else { return }
         guard let script = ReaderPage.extractionScript else {
-            return fail("Readability.js est introuvable dans l'application.")
+            return fail(String(localized: "Readability.js is missing from the app."))
         }
         guard let json = await webView.evaluate(script, in: .defaultClient),
               let article = try? JSONDecoder().decode(Article.self, from: Data(json.utf8))
-        else { return fail("Impossible d'extraire le contenu de cette page.") }
+        else { return fail(String(localized: "Couldn’t extract the content of this page.")) }
         guard pendingPage == page else { return }
         pendingPage = nil
         articleURL = webView.url ?? page
@@ -182,7 +182,7 @@ final class BrowserModel: NSObject {
     private func articleDisplayed() async {
         guard let json = await readerView.evaluate("JSON.stringify(__bs.blocks())", in: Self.readerWorld),
               let blocks = try? JSONDecoder().decode([String].self, from: Data(json.utf8)), !blocks.isEmpty
-        else { return fail("Cet article ne contient pas de texte à lire.") }
+        else { return fail(String(localized: "This article has no text to read.")) }
         self.blocks = blocks
         blockLengths = blocks.map(\.count)
         position = 0

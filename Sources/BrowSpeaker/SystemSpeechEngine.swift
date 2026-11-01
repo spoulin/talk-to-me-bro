@@ -95,9 +95,9 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
     }
 
     static var systemVoiceDescription: String {
-        guard let voice = systemVoice() else { return "Voix par défaut" }
+        guard let voice = systemVoice() else { return String(localized: "Default voice") }
         let exact = voice.identifier == NSSpeechSynthesizer.defaultVoice.rawValue
-        return AVVoices.label(for: voice) + (exact ? "" : " — remplacement")
+        return AVVoices.label(for: voice) + (exact ? "" : String(localized: " — fallback"))
     }
 
     /// Maps the system rate (words per minute, ~175 by default) times the user
@@ -134,13 +134,13 @@ enum AVVoices {
             ?? AVSpeechSynthesisVoice.currentLanguageCode()
     }
 
-    /// "Nicolas — Améliorée (fr-CA)"
+    /// "Nicolas — Enhanced (fr-CA)"
     static func label(for voice: AVSpeechSynthesisVoice) -> String {
         let name = voice.name.components(separatedBy: " (").first ?? voice.name
         let quality = switch voice.quality {
-        case .premium: "Premium"
-        case .enhanced: "Améliorée"
-        default: "Standard"
+        case .premium: String(localized: "Premium")
+        case .enhanced: String(localized: "Enhanced")
+        default: String(localized: "Standard")
         }
         return "\(name) — \(quality) (\(voice.language))"
     }

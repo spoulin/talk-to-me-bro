@@ -31,37 +31,37 @@ struct BrowserCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .newItem) {
             Divider()
-            Button("Écouter le lien copié") { model?.openFromPasteboard() }
+            Button("Listen to Copied Link") { model?.openFromPasteboard() }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
             Divider()
-            Button("Ouvrir dans le navigateur") { model?.openInBrowser() }
+            Button("Open in Browser") { model?.openInBrowser() }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
                 .disabled(model?.phase != .ready)
-            Button("Fermer l'article") { model?.closeArticle() }
+            Button("Close Article") { model?.closeArticle() }
                 .disabled(model?.phase != .ready)
         }
 
         CommandGroup(after: .toolbar) {
-            Button("Agrandir le texte") { model?.zoom(by: 1) }
+            Button("Bigger Text") { model?.zoom(by: 1) }
                 .keyboardShortcut("+")
-            Button("Réduire le texte") { model?.zoom(by: -1) }
+            Button("Smaller Text") { model?.zoom(by: -1) }
                 .keyboardShortcut("-")
-            Button("Taille normale") { model?.resetZoom() }
+            Button("Actual Size") { model?.resetZoom() }
                 .keyboardShortcut("0")
             Divider()
         }
 
-        CommandMenu("Lecture") {
-            Button(model?.speech.state == .speaking ? "Pause" : "Lire") {
+        CommandMenu("Playback") {
+            Button(model?.speech.state == .speaking ? LocalizedStringKey("Pause") : LocalizedStringKey("Play")) {
                 model?.togglePlayPause()
             }
             .keyboardShortcut("p", modifiers: [.command, .option])
-            Button("Arrêter") { model?.speech.stop() }
+            Button("Stop") { model?.speech.stop() }
                 .keyboardShortcut(".", modifiers: [.command, .option])
             Divider()
-            Button("Paragraphe précédent") { model?.previous() }
+            Button("Previous Paragraph") { model?.previous() }
                 .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
-            Button("Paragraphe suivant") { model?.next() }
+            Button("Next Paragraph") { model?.next() }
                 .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
         }
     }

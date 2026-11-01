@@ -41,6 +41,7 @@ final class PiperService {
     /// The long operation in progress (install, download), shown in Settings.
     private(set) var busy: String?
     private(set) var status: String?
+    private(set) var statusIsError = false
 
     var voices: [Voice] {
         isInstalled ? installedVoices.map { Voice(engine: .piper, id: $0.id, label: $0.label) } : []
@@ -77,25 +78,25 @@ final class PiperService {
     // MARK: Install and voices
 
     func install() async {
-        await perform("Installation de Piper (environ 200 Mo)…") {
+        await perform(String(localized: "Installing Piper (about 200 MB)…")) {
             guard let python = await Self.findPython() else {
-                throw Failure("Python 3.9 ou plus récent est requis (python.org ou « brew install python »).")
+                throw Failure(String(localized: "Python 3.9 or later is required (python.org or “brew install python”)."))
             }
             try FileManager.default.createDirectory(at: Self.voicesDir, withIntermediateDirectories: true)
             try await Self.run(python, ["-m", "venv", "--clear", Self.envDir.path])
             try await Self.run(Self.python, ["-m", "pip", "install", "--disable-pip-version-check", "-q", "piper-tts[http]"])
             FileManager.default.createFile(atPath: Self.installedMarker.path, contents: nil)
             self.reload()
-            self.status = "Piper est installé. Téléchargez une voix ci-dessous."
+            self.status = String(localized: "Piper is installed. Download a voice below.")
         }
         await loadCatalog()
     }
 
     func download(_ voice: CatalogVoice) async {
-        await perform("Téléchargement de \(voice.label)…") {
+        await perform(String(localized: "Downloading \(voice.label)…")) {
             try await Self.run(Self.python, ["-m", "piper.download_voices", "--download-dir", Self.voicesDir.path, voice.id])
             self.reload()
-            self.status = "\(voice.label) est prête : choisissez-la dans « Aa » › Voix."
+            self.status = String(localized: "\(voice.label) is ready: pick it from the voice menu.")
         }
     }
 
@@ -141,10 +142,12 @@ final class PiperService {
         guard busy == nil else { return }
         busy = message
         status = nil
+        statusIsError = false
         do {
             try await work()
         } catch {
-            status = "Échec : \(error.localizedDescription)"
+            status = String(localized: "Failed: \(error.localizedDescription)")
+            statusIsError = true
         }
         busy = nil
     }
@@ -182,7 +185,7 @@ final class PiperService {
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard status == 200 else { throw Failure("le serveur Piper a répondu \(status)") }
+        guard status == 200 else { throw Failure(String(localized: "the Piper server returned \(status)")) }
         return data
     }
 
@@ -199,7 +202,7 @@ final class PiperService {
     }
 
     private func startServer(voice: String, sentencePause: Double) async throws -> Int {
-        guard isInstalled else { throw Failure("Piper n'est pas installé") }
+        guard isInstalled else { throw Failure(String(localized: "Piper is not installed")) }
         let port = Self.freePort()
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -230,7 +233,7 @@ final class PiperService {
             }
         }
         stopServer()
-        throw Failure("le serveur Piper n'a pas démarré (détails : \(Self.logFile.path))")
+        throw Failure(String(localized: "the Piper server didn’t start (details: \(Self.logFile.path))"))
     }
 
     func stopServer() {
@@ -276,7 +279,7 @@ final class PiperService {
         guard status == 0 else {
             let tail = (try? String(contentsOf: logFile, encoding: .utf8))?
                 .split(separator: "\n").suffix(2).joined(separator: " ") ?? ""
-            throw Failure("\(executable.lastPathComponent) a échoué. \(tail)")
+            throw Failure(String(localized: "\(executable.lastPathComponent) failed. \(tail)"))
         }
     }
 

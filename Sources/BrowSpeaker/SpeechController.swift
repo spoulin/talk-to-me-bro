@@ -22,10 +22,10 @@ enum Pacing: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .none: "Aucune"
-        case .short: "Courtes"
-        case .medium: "Moyennes"
-        case .long: "Longues"
+        case .none: String(localized: "None")
+        case .short: String(localized: "Short")
+        case .medium: String(localized: "Medium")
+        case .long: String(localized: "Long")
         }
     }
 
@@ -192,7 +192,7 @@ final class SpeechController {
     /// A cloud voice that fails (no network, bad key, quota) must not leave the
     /// reader silent: carry on with the macOS voice from the same paragraph.
     private func fallBackToSystemVoice(after error: Error, in engineName: String) {
-        onError?("\(engineName) : \(error.localizedDescription) — lecture avec la voix du système.")
+        onError?(String(localized: "\(engineName): \(error.localizedDescription) — reading with the system voice."))
         let index = currentIndex ?? 0
         engine = systemEngine
         state = .speaking

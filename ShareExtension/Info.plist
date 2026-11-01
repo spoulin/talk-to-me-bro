@@ -5,7 +5,7 @@
     <key>CFBundleName</key>
     <string>BrowSpeakerShare</string>
     <key>CFBundleDisplayName</key>
-    <string>Lire avec Talk to me Bro</string>
+    <string>Read with Talk to me Bro</string>
     <key>CFBundleIdentifier</key>
     <string>local.browspeaker.share</string>
     <key>CFBundleExecutable</key>
@@ -16,6 +16,13 @@
     <string>0.1</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>fr</string>
+    </array>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSExtension</key>
