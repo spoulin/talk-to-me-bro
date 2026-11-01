@@ -47,7 +47,7 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
 - Partager (ou glisser, ou ⇧⌘V) un article pendant qu'un autre joue ou est en pause : il va dans la
   **playlist** au lieu de couper la lecture (« Ajouté à la playlist »).
 - Quand un article est lu jusqu'au bout, le suivant démarre tout seul et sort de la liste. ⏭ (ou ⌥⌘↓,
-  ou fermer l'article) passe au suivant.
+  ou fermer l'article) passe au suivant. Quand il n'y a plus rien à écouter, l'app revient à l'accueil.
 - Le bouton playlist de la barre du lecteur (avec le nombre d'articles en attente) ouvre la liste :
   glisser pour réordonner, Suppr ou clic droit pour retirer, *Vider* pour tout enlever, double-clic pour
   écouter un article tout de suite.
