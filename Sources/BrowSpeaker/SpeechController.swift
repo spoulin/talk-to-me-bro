@@ -57,8 +57,9 @@ struct SpeechEngineEvents {
     var failed: (Error) -> Void = { _ in }
 }
 
-/// Reads the reader page aloud: keeps the playback state and routes to the
-/// engine of the selected voice (macOS voices by default, Piper when installed).
+/// Reads the reader page aloud: keeps the playback state and routes each
+/// paragraph to the engine of its voice (the text voice, or the one chosen for
+/// titles, captions and quotes).
 @MainActor
 @Observable
 final class SpeechController {
@@ -114,6 +115,29 @@ final class SpeechController {
     @ObservationIgnored private let piperEngine = ClipSpeechEngine(PiperSynthesizer())
     @ObservationIgnored private var engine: SpeechEngine?
     @ObservationIgnored private var blocks: [String] = []
+    @ObservationIgnored private var kinds: [BlockKind] = []
+    /// The article's language, for words the app adds ("Caption:").
+    @ObservationIgnored private var language = ""
+
+    /// Consecutive segments read by the same voice.
+    struct Run {
+        let engine: SpeechEngine
+        let voiceID: String?
+        var segments: [SpeechSegment]
+    }
+
+    @ObservationIgnored private var runs: [Run] = []
+    @ObservationIgnored private var runIndex = 0
+    /// The dictionary or the voices by type changed: prepare the rest again
+    /// when the next paragraph starts.
+    @ObservationIgnored private var needsReplan = false
+    @ObservationIgnored private var replanObserver: NSObjectProtocol?
+
+    private static let settingsChangedNotification = Notification.Name("SpeechSettingsChanged")
+
+    static func settingsChanged() {
+        NotificationCenter.default.post(name: settingsChangedNotification, object: nil)
+    }
 
     var hasBlocks: Bool { !blocks.isEmpty && state != .idle }
 
@@ -121,23 +145,34 @@ final class SpeechController {
         let engines: [(SpeechEngine, String)] = [(systemEngine, "macOS"), (piperEngine, "Piper")]
         for (engine, name) in engines {
             engine.events = SpeechEngineEvents(
-                blockStarted: { [weak self] i in
-                    self?.currentIndex = i
-                    self?.onBlockStart?(i)
-                },
+                blockStarted: { [weak self] i in self?.blockStarted(i) },
                 willSpeak: { [weak self] i, range in self?.onWord?(i, range) },
-                finished: { [weak self] in
-                    self?.engine = nil
-                    self?.finish()
-                    self?.onComplete?()
-                },
+                finished: { [weak self] in self?.runFinished() },
                 failed: { [weak self] error in self?.fallBackToSystemVoice(after: error, in: name) }
             )
         }
+        replanObserver = NotificationCenter.default.addObserver(forName: Self.settingsChangedNotification,
+                                                                object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                if let self, self.state != .idle { self.needsReplan = true }
+            }
+        }
     }
 
-    func speak(_ blocks: [String], from start: Int) {
+    private func blockStarted(_ index: Int) {
+        if needsReplan, index != currentIndex {
+            // Restarting at the paragraph that is just beginning: barely audible.
+            needsReplan = false
+            return jump(to: index)
+        }
+        currentIndex = index
+        onBlockStart?(index)
+    }
+
+    func speak(_ blocks: [String], kinds: [BlockKind] = [], language: String = "", from start: Int) {
         self.blocks = blocks
+        self.kinds = kinds
+        self.language = language
         jump(to: start)
     }
 
@@ -151,11 +186,12 @@ final class SpeechController {
             if !blocks.isEmpty { onComplete?() }
             return
         }
-        let (engine, voiceID) = resolveEngine()
-        self.engine = engine
+        runs = makeRuns(segments)
+        runIndex = 0
+        needsReplan = false
         currentIndex = index
         state = .speaking
-        engine.start(segments, voiceID: voiceID, speed: speed)
+        startRun()
     }
 
     func pause() {
@@ -188,10 +224,43 @@ final class SpeechController {
     }
 
     private func segments(from index: Int) -> [SpeechSegment] {
-        SpeechScript.segments(for: blocks, from: index, pacing: pacing, entries: Pronunciations.shared.entries)
+        SpeechScript.segments(for: blocks, kinds: kinds, from: index, pacing: pacing,
+                              entries: Pronunciations.shared.entries,
+                              announceCaptions: VoiceRoles.shared.announceCaptions, language: language)
     }
 
-    private func resolveEngine() -> (SpeechEngine, String?) {
+    func makeRuns(_ segments: [SpeechSegment]) -> [Run] {
+        var runs: [Run] = []
+        for segment in segments {
+            let (engine, voiceID) = resolveEngine(VoiceRoles.shared.voiceKey(for: segment.kind) ?? voiceKey)
+            if let last = runs.indices.last, runs[last].engine === engine, runs[last].voiceID == voiceID {
+                runs[last].segments.append(segment)
+            } else {
+                runs.append(Run(engine: engine, voiceID: voiceID, segments: [segment]))
+            }
+        }
+        return runs
+    }
+
+    private func startRun() {
+        let run = runs[runIndex]
+        engine = run.engine
+        run.engine.start(run.segments, voiceID: run.voiceID, speed: speed)
+        if state == .paused { run.engine.pause() }
+    }
+
+    private func runFinished() {
+        if runIndex + 1 < runs.count {
+            runIndex += 1
+            startRun()
+        } else {
+            engine = nil
+            finish()
+            onComplete?()
+        }
+    }
+
+    private func resolveEngine(_ voiceKey: String?) -> (SpeechEngine, String?) {
         switch Voice.parse(voiceKey) {
         case (.piper, let id?) where PiperService.shared.isInstalled:
             (piperEngine, id)
@@ -206,10 +275,10 @@ final class SpeechController {
     /// reader silent: carry on with the macOS voice from the same paragraph.
     private func fallBackToSystemVoice(after error: Error, in engineName: String) {
         onError?(String(localized: "\(engineName): \(error.localizedDescription) — reading with the system voice."))
-        let index = currentIndex ?? 0
-        engine = systemEngine
+        runs = [Run(engine: systemEngine, voiceID: nil, segments: segments(from: currentIndex ?? 0))]
+        runIndex = 0
         state = .speaking
-        systemEngine.start(segments(from: index), voiceID: nil, speed: speed)
+        startRun()
     }
 
     private func restartIfSpeaking() {

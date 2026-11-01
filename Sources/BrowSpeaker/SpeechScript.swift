@@ -4,8 +4,16 @@ import Observation
 /// A piece of text spoken in one go, followed by a silence. Paragraphs are
 /// split into sentences, and further at pauses ("…", parentheses and brackets,
 /// `[pause]` in the dictionary).
+/// What a paragraph is, to read it with its own voice.
+enum BlockKind: String, CaseIterable, Identifiable {
+    case text, title, caption, quote
+
+    var id: Self { self }
+}
+
 struct SpeechSegment {
     let block: Int
+    let kind: BlockKind
     /// The text given to the voice, after dictionary replacements.
     let spoken: String
     let map: SpokenMap
@@ -44,20 +52,24 @@ enum SpeechScript {
     /// Silence for a `[pause]` without a duration.
     static let defaultPause = 0.6
 
-    static func segments(for blocks: [String], from index: Int, pacing: Pacing,
-                         entries: [PronunciationEntry]) -> [SpeechSegment] {
+    static func segments(for blocks: [String], kinds: [BlockKind] = [], from index: Int, pacing: Pacing,
+                         entries: [PronunciationEntry], announceCaptions: Bool = false,
+                         language: String = "") -> [SpeechSegment] {
+        let captionLabel = announceCaptions ? Self.captionLabel(in: language) : ""
         let rules = Rule.compile(entries, pacing: pacing)
         var segments: [SpeechSegment] = []
         for block in index..<blocks.count {
             let firstOfBlock = segments.count
-            appendSegments(of: blocks[block] as NSString, block: block, pacing: pacing, rules: rules, to: &segments)
+            let kind = kinds.indices.contains(block) ? kinds[block] : .text
+            appendSegments(of: blocks[block] as NSString, block: block, kind: kind, pacing: pacing, rules: rules,
+                           announcement: kind == .caption ? captionLabel : "", to: &segments)
             if segments.count > firstOfBlock { segments[firstOfBlock].isFirstInBlock = true }
         }
         return segments
     }
 
-    private static func appendSegments(of text: NSString, block: Int, pacing: Pacing, rules: [Rule],
-                                       to segments: inout [SpeechSegment]) {
+    private static func appendSegments(of text: NSString, block: Int, kind: BlockKind, pacing: Pacing, rules: [Rule],
+                                       announcement: String, to segments: inout [SpeechSegment]) {
         var sentences: [NSRange] = []
         text.enumerateSubstrings(in: NSRange(location: 0, length: text.length),
                                  options: [.bySentences, .substringNotRequired]) { _, range, _, _ in
@@ -81,12 +93,15 @@ enum SpeechScript {
                         segments[last].pauseAfter += pause
                     }
                 } else {
-                    segments.append(SpeechSegment(block: block, spoken: spoken, map: map, pauseAfter: pause))
+                    segments.append(SpeechSegment(block: block, kind: kind, spoken: spoken, map: map, pauseAfter: pause))
                 }
                 spoken = ""
                 map = SpokenMap()
             }
 
+            if !announcement.isEmpty, s == 0 {
+                append(announcement + " ", original: NSRange(location: sentence.location, length: 0), replaced: true)
+            }
             var cursor = sentence.location
             for match in matches(in: text, range: sentence, rules: rules) {
                 if match.range.location > cursor {
@@ -118,6 +133,16 @@ enum SpeechScript {
         if let last = segments.indices.last, segments[last].block == block {
             segments[last].pauseAfter = max(segments[last].pauseAfter, pacing.paragraph)
         }
+    }
+
+    /// "Caption:" in the article's language (the voice reads the article, whatever
+    /// the interface language), falling back to the system speech language.
+    private static func captionLabel(in language: String) -> String {
+        let code = String((language.isEmpty ? AVVoices.systemLanguage : language).prefix(2)).lowercased()
+        guard let path = Bundle.main.path(forResource: code, ofType: "lproj"), let bundle = Bundle(path: path) else {
+            return "Caption:"
+        }
+        return bundle.localizedString(forKey: "Caption:", value: "Caption:", table: nil)
     }
 
     // MARK: Rules
@@ -201,6 +226,38 @@ enum SpeechScript {
     }
 }
 
+// MARK: - Voices by type
+
+/// A voice for titles, captions and quotes; nil reads them with the text voice.
+@MainActor
+@Observable
+final class VoiceRoles {
+    static let shared = VoiceRoles()
+
+    var title: String? = UserDefaults.standard.string(forKey: "voice.title") {
+        didSet { UserDefaults.standard.set(title, forKey: "voice.title"); SpeechController.settingsChanged() }
+    }
+    var caption: String? = UserDefaults.standard.string(forKey: "voice.caption") {
+        didSet { UserDefaults.standard.set(caption, forKey: "voice.caption"); SpeechController.settingsChanged() }
+    }
+    var quote: String? = UserDefaults.standard.string(forKey: "voice.quote") {
+        didSet { UserDefaults.standard.set(quote, forKey: "voice.quote"); SpeechController.settingsChanged() }
+    }
+    /// Says "Caption:" before photo captions, so they don't blend into the story.
+    var announceCaptions = UserDefaults.standard.bool(forKey: "announceCaptions") {
+        didSet { UserDefaults.standard.set(announceCaptions, forKey: "announceCaptions"); SpeechController.settingsChanged() }
+    }
+
+    func voiceKey(for kind: BlockKind) -> String? {
+        switch kind {
+        case .text: nil
+        case .title: title
+        case .caption: caption
+        case .quote: quote
+        }
+    }
+}
+
 // MARK: - Dictionary
 
 struct PronunciationEntry: Codable, Identifiable, Hashable {
@@ -217,7 +274,10 @@ final class Pronunciations {
     private static let defaultsKey = "pronunciations"
 
     var entries: [PronunciationEntry] = [] {
-        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(entries), forKey: Self.defaultsKey) }
+        didSet {
+            UserDefaults.standard.set(try? JSONEncoder().encode(entries), forKey: Self.defaultsKey)
+            SpeechController.settingsChanged()
+        }
     }
 
     init() {

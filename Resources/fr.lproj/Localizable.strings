@@ -98,4 +98,14 @@
 "No words yet." = "Aucun mot pour l’instant.";
 "Add a word" = "Ajouter un mot";
 "Remove the selected words" = "Retirer les mots sélectionnés";
-"Changes apply from the next paragraph you start." = "Les changements s’appliquent à partir du prochain paragraphe lancé.";
+"Changes apply from the next paragraph." = "Les changements s’appliquent dès le paragraphe suivant.";
+
+/* Voices by type */
+"Voices by type" = "Voix par type";
+"Titles" = "Titres";
+"Photo captions" = "Légendes de photos";
+"Quotes" = "Citations";
+"Same as text" = "Même voix que le texte";
+"Announce captions (“Caption: …”)" = "Annoncer les légendes (« Légende : … »)";
+"Caption:" = "Légende :";
+"The text voice is chosen in the player bar. Changes apply from the next paragraph." = "La voix du texte se choisit dans la barre du lecteur. Les changements s’appliquent dès le paragraphe suivant.";

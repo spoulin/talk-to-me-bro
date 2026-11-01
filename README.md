@@ -60,6 +60,15 @@ the time left, the playback controls, speed and pauses, voice, and text size.
   `[12]` are not read. A dictionary entry for the same characters takes precedence.
 - ▶︎ plays the word through the dictionary with the current voice.
 
+## Voices by type
+
+**Settings › Voices › Voices by type**: a different voice for titles, photo captions and quotes ("Same
+as text" by default), mixing macOS and Piper voices freely. *Announce captions* says "Caption:" (in the
+article's language) before each caption.
+
+Changes to the dictionary and to the voices by type apply from the next paragraph, without cutting the
+current one.
+
 ## Voices
 
 Two engines, chosen from the voice menu in the player bar; everything stays on the Mac:

@@ -133,6 +133,9 @@ enum ReaderPage {
 
       window.__bs = {
         blocks: () => get().map(el => el.textContent),
+        kinds: () => get().map(el => el.matches("h1,h2,h3,h4,h5,h6") ? "title"
+          : el.closest("figcaption, [class*='caption']") ? "caption"
+          : el.closest("blockquote") ? "quote" : "text"),
         firstVisible() {
           const b = get();
           for (let i = 0; i < b.length; i++) if (b[i].getBoundingClientRect().bottom > 8) return i;

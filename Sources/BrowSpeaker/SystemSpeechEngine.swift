@@ -14,6 +14,7 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
 
     private var synth: AVSpeechSynthesizer?
     private var pieces: [ObjectIdentifier: Piece] = [:]
+    private var generation = 0
 
     /// One utterance per segment, each followed by its silence. A fresh
     /// synthesizer is used each time: enqueuing right after `stopSpeaking` on
@@ -39,6 +40,7 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
     func resume() { synth?.continueSpeaking() }
 
     func stop() {
+        generation += 1
         pieces.removeAll()
         synth?.delegate = nil
         synth?.stopSpeaking(at: .immediate)
@@ -60,7 +62,12 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
     fileprivate func utteranceFinished(_ id: ObjectIdentifier, synth: ObjectIdentifier) {
         guard let piece = piece(for: id, from: synth), piece.isLast else { return }
         stop()
-        events.finished()
+        // The silence after the last segment, before another voice takes over.
+        let generation = generation
+        Task {
+            try? await Task.sleep(for: .seconds(piece.segment.pauseAfter))
+            if generation == self.generation { events.finished() }
+        }
     }
 
     fileprivate func willSpeak(_ range: NSRange, in id: ObjectIdentifier, synth: ObjectIdentifier) {

@@ -10,6 +10,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                VoiceRolesSettings()
                 PiperSettings()
             }
             .formStyle(.grouped)
@@ -19,6 +20,43 @@ struct SettingsView: View {
                 .tabItem { Label("Pronunciation", systemImage: "character.bubble") }
         }
         .frame(width: 580, height: 540)
+    }
+}
+
+/// A different voice for titles, captions and quotes, so they stand out from the story.
+private struct VoiceRolesSettings: View {
+    @Bindable private var roles = VoiceRoles.shared
+    private var piper = PiperService.shared
+
+    var body: some View {
+        Section {
+            picker("Titles", selection: $roles.title)
+            picker("Photo captions", selection: $roles.caption)
+            picker("Quotes", selection: $roles.quote)
+            Toggle("Announce captions (“Caption: …”)", isOn: $roles.announceCaptions)
+        } header: {
+            Text("Voices by type")
+        } footer: {
+            Text("The text voice is chosen in the player bar. Changes apply from the next paragraph.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func picker(_ title: LocalizedStringKey, selection: Binding<String?>) -> some View {
+        Picker(title, selection: selection) {
+            Text("Same as text").tag(String?.none)
+            Divider()
+            ForEach(AVVoices.installed().main) { voice in
+                Text(voice.label).tag(Optional(voice.key))
+            }
+            if !piper.voices.isEmpty {
+                Divider()
+                ForEach(piper.voices) { voice in
+                    Text(voice.label).tag(Optional(voice.key))
+                }
+            }
+        }
     }
 }
 
@@ -66,7 +104,7 @@ private struct PronunciationSettings: View {
                     .help("Remove the selected words")
                     .disabled(selection.isEmpty)
                 Spacer()
-                Text("Changes apply from the next paragraph you start.")
+                Text("Changes apply from the next paragraph.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

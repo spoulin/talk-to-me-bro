@@ -63,6 +63,15 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
   de note comme `[12]` ne sont pas lus. Une entrée du dictionnaire pour les mêmes caractères a priorité.
 - ▶︎ fait entendre le mot passé par le dictionnaire, avec la voix actuelle.
 
+## Voix par type
+
+**Réglages › Voix › Voix par type** : une voix différente pour les titres, les légendes de photos et les
+citations (« Même voix que le texte » par défaut), en mélangeant librement voix macOS et Piper.
+*Annoncer les légendes* dit « Légende : » (dans la langue de l'article) avant chaque légende.
+
+Les changements du dictionnaire et des voix par type s'appliquent dès le paragraphe suivant, sans couper
+celui en cours.
+
 ## Choix des voix
 
 Deux moteurs, choisis dans le menu des voix de la barre du lecteur ; tout reste sur le Mac :

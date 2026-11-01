@@ -42,6 +42,8 @@ final class BrowserModel: NSObject {
     }
 
     @ObservationIgnored private var blocks: [String] = []
+    @ObservationIgnored private var kinds: [BlockKind] = []
+    @ObservationIgnored private var language = ""
     @ObservationIgnored private var observation: NSKeyValueObservation?
     /// The page being loaded in the hidden web view, until its article is extracted.
     @ObservationIgnored private var pendingPage: URL?
@@ -210,6 +212,7 @@ final class BrowserModel: NSObject {
         pendingPage = nil
         articleURL = webView.url ?? page
         articleTitle = article.title
+        language = article.lang
         siteName = article.siteName
         readerView.loadHTMLString(ReaderPage.html(for: article, fontSize: readerFontSize), baseURL: articleURL)
         // The page itself is no longer needed: stop its scripts and media.
@@ -218,14 +221,18 @@ final class BrowserModel: NSObject {
 
     /// Once the article is displayed: split it into paragraphs and start reading.
     private func articleDisplayed() async {
-        guard let json = await readerView.evaluate("JSON.stringify(__bs.blocks())", in: Self.readerWorld),
-              let blocks = try? JSONDecoder().decode([String].self, from: Data(json.utf8)), !blocks.isEmpty
+        struct Paragraphs: Decodable { var blocks: [String]; var kinds: [String] }
+        guard let json = await readerView.evaluate("JSON.stringify({blocks: __bs.blocks(), kinds: __bs.kinds()})",
+                                                   in: Self.readerWorld),
+              let paragraphs = try? JSONDecoder().decode(Paragraphs.self, from: Data(json.utf8)),
+              !paragraphs.blocks.isEmpty
         else { return fail(String(localized: "This article has no text to read.")) }
-        self.blocks = blocks
+        blocks = paragraphs.blocks
+        kinds = paragraphs.kinds.map { BlockKind(rawValue: $0) ?? .text }
         blockLengths = blocks.map(\.count)
         position = 0
         phase = .ready
-        speech.speak(blocks, from: 0)
+        speech.speak(blocks, kinds: kinds, language: language, from: 0)
         Self.log.info("Reading started: \(self.speech.state == .speaking, privacy: .public)")
     }
 
@@ -248,7 +255,7 @@ final class BrowserModel: NSObject {
     func seek(to index: Int) {
         guard blocks.indices.contains(index) else { return }
         position = index
-        if speech.hasBlocks { speech.jump(to: index) } else { speech.speak(blocks, from: index) }
+        if speech.hasBlocks { speech.jump(to: index) } else { speech.speak(blocks, kinds: kinds, language: language, from: index) }
     }
 
     func previous() {
