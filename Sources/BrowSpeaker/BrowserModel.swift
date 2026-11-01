@@ -296,7 +296,7 @@ final class BrowserModel: NSObject {
         }
         pendingPage = nil
         articleURL = webView.url ?? page
-        articleTitle = article.title
+        articleTitle = article.kicker.flatMap { $0.isEmpty ? nil : "\($0) — \(article.title)" } ?? article.title
         language = article.lang
         siteName = article.siteName
         readerView.loadHTMLString(ReaderPage.html(for: article, fontSize: readerFontSize), baseURL: articleURL)
@@ -351,7 +351,7 @@ final class BrowserModel: NSObject {
     private func showVideo(_ article: Article) {
         pendingPage = nil
         articleURL = webView.url
-        articleTitle = article.title
+        articleTitle = article.kicker.flatMap { $0.isEmpty ? nil : "\($0) — \(article.title)" } ?? article.title
         siteName = article.siteName
         blocks = []
         blockLengths = []

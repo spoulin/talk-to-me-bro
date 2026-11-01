@@ -7,6 +7,8 @@ struct Article: Decodable {
     var content: String
     var lang: String
     var words: Int?
+    /// The line above the title in a heading in parts ("L'argent et le bonheur").
+    var kicker: String?
 }
 
 /// The "Just Read"-style page: article extraction on the live page with
@@ -21,11 +23,39 @@ enum ReaderPage {
         return """
         (function () {
         \(readability)
+        // A heading in parts (a kicker line, then the title) reads as one run-on
+        // sentence once its text is joined: keep the parts apart.
+        var norm = function (s) { return (s || "").replace(/\\s+/g, " ").trim(); };
+        // The lines of a heading: by layout when there is one, else by its parts
+        // (<span class="suptitle">…</span><span class="title">…</span>).
+        var headingLines = function (el) {
+          var lines = (el.innerText || "").split("\\n").map(norm).filter(function (s) { return s; });
+          if (lines.length > 1) return lines;
+          var kids = Array.prototype.filter.call(el.children, function (c) { return norm(c.textContent); });
+          var loose = Array.prototype.some.call(el.childNodes, function (n) { return n.nodeType === 3 && norm(n.textContent); });
+          if (kids.length > 1 && !loose && (/sup|kick|surtit|over|eyebrow|rubri|categ/i.test(kids[0].getAttribute("class") || "") ||
+              /block|flex|grid/.test(getComputedStyle(kids[0]).display))) {
+            return kids.map(function (c) { return norm(c.textContent); });
+          }
+          return [norm(el.textContent)];
+        };
+        var splitTitle = function (title) {
+          var headings = document.querySelectorAll("h1");
+          for (var i = 0; i < headings.length; i++) {
+            var lines = headingLines(headings[i]);
+            var last = lines[lines.length - 1];
+            if (lines.length > 1 && last.length > 3 && (norm(title).indexOf(last) >= 0 || norm(headings[i].textContent) === norm(title))) {
+              return { kicker: lines.slice(0, -1).join(" — "), title: last };
+            }
+          }
+          return { kicker: "", title: title };
+        };
         try {
           var a = new Readability(document.cloneNode(true)).parse();
           if (a && a.content && a.textContent && a.textContent.trim().length > 200) {
+            var heading = splitTitle(a.title || document.title);
             return JSON.stringify({
-              title: a.title || document.title, byline: a.byline || "",
+              title: heading.title, kicker: heading.kicker, byline: a.byline || "",
               siteName: a.siteName || location.hostname, content: a.content,
               lang: a.lang || document.documentElement.lang || "",
               words: a.textContent.trim().split(/\\s+/).length
@@ -59,6 +89,7 @@ enum ReaderPage {
         <main>
         <header>
         <div class="site">\(escape(article.siteName))</div>
+        \(article.kicker.map { $0.isEmpty ? "" : "<p class=\"kicker\">\(escape($0))</p>" } ?? "")
         <h1 class="title">\(escape(article.title))</h1>
         \(byline)
         </header>
@@ -93,6 +124,7 @@ enum ReaderPage {
     main { max-width: 40em; margin: 0 auto; padding: 56px 28px 160px; }
     .site { color: var(--muted); font: 600 .72em/1.4 -apple-system, sans-serif;
             text-transform: uppercase; letter-spacing: .07em; }
+    .kicker { color: var(--muted); font-size: 1.1em; margin: .9em 0 -.2em; }
     h1.title { font-size: 2em; line-height: 1.18; margin: .35em 0 .3em; }
     .byline { color: var(--muted); font-style: italic; margin-bottom: 2.2em; }
     h1, h2, h3, h4 { line-height: 1.25; }

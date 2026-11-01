@@ -523,9 +523,27 @@ final class PageLinks: NSObject, WKNavigationDelegate {
         let script = """
         (() => {
           const seen = new Set(), out = [];
+          const norm = s => (s || "").replace(/\\s+/g, " ").trim();
+          // The lines of an element: by layout when there is one, else by its parts
+          // (<span class="suptitle">…</span><span>…</span>).
+          const lines = el => {
+            const byLayout = (el.innerText || "").split("\\n").map(norm).filter(Boolean);
+            if (byLayout.length > 1) return byLayout;
+            const kids = Array.from(el.children).filter(c => norm(c.textContent));
+            const loose = Array.from(el.childNodes).some(n => n.nodeType === 3 && norm(n.textContent));
+            if (kids.length > 1 && !loose && (/sup|kick|surtit|over|eyebrow|rubri|categ/i.test(kids[0].getAttribute("class") || "") ||
+                /block|flex|grid/.test(getComputedStyle(kids[0]).display))) return kids.map(c => norm(c.textContent));
+            return [norm(el.textContent)];
+          };
           for (const a of document.querySelectorAll("a[href]")) {
             const url = new URL(a.href, location.href);
-            const title = (a.innerText || a.getAttribute("aria-label") || "").replace(/\\s+/g, " ").trim();
+            // A link in parts → "Kicker — Title": its heading when it has one (not the
+            // summary under it), and never "Publié à 5 h 00".
+            const heading = a.querySelector("h1, h2, h3, h4, h5, h6");
+            const parts = heading && norm(heading.textContent).length >= 25 ? lines(heading) : lines(a);
+            const title = (parts.join("") ? parts : [norm(a.getAttribute("aria-label"))])
+              .filter(s => s && !/^(publié|mis à jour|published|updated)\\b/i.test(s))
+              .join(" — ");
             if (url.hostname !== location.hostname || url.pathname.split("/").filter(Boolean).length < 2) continue;
             if (title.length < 25 || title.split(" ").length < 4 || seen.has(url.pathname)) continue;
             seen.add(url.pathname);
