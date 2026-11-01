@@ -71,8 +71,8 @@ Certains « articles » ne sont qu'une vidéo (ex. : `ici.radio-canada.ca/info/v
 une adresse de vidéo, ou très peu de texte autour d'une grande vidéo, l'app passe en **mode vidéo** : la
 page d'origine est affichée avec son lecteur isolé, centré à ses proportions dans la fenêtre, et le reste
 masqué. La barre du lecteur habituelle le pilote : position et temps restant, lecture/pause,
-⟲ 15 s / ⟳ 15 s, vitesse, article suivant (les commandes du site marchent aussi). La vidéo démarre toute seule (après les pubs du
-site, s'il y en a). À la fin de la vidéo, l'article
+⟲ 15 s / ⟳ 15 s, vitesse, article suivant (les commandes du site marchent aussi). La vidéo démarre toute seule ; les pubs du site, s'il y en a,
+sont jouées sans le son (« Pub · son coupé » dans la barre) et le son revient pour la vidéo. À la fin de la vidéo, l'article
 suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
 
 Les liens **YouTube** (vidéos, Shorts, `youtu.be`) passent par le lecteur intégrable de YouTube en mode

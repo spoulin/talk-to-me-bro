@@ -28,6 +28,8 @@ final class BrowserModel: NSObject {
     private(set) var videoTime = 0.0
     private(set) var videoDuration = 0.0
     private(set) var videoPlaying = false
+    /// An ad is playing (and muted).
+    private(set) var videoAd = false
     @ObservationIgnored private var videoPolling: Task<Void, Never>?
     /// A YouTube video, played in YouTube's own embeddable player (see `VideoPage.YouTube`).
     @ObservationIgnored private var isYouTube = false
@@ -347,6 +349,7 @@ final class BrowserModel: NSObject {
         videoTime = 0
         videoDuration = 0
         videoPlaying = false
+        videoAd = false
         videoPolling?.cancel()
         videoPolling = Task { [weak self] in
             while let self, self.isVideo, !Task.isCancelled {
@@ -358,6 +361,10 @@ final class BrowserModel: NSObject {
                     self.videoDuration = state.d
                     if state.p, !self.videoPlaying { self.applyVideoSpeed() }
                     self.videoPlaying = state.p
+                }
+                // YouTube's player is in another site's frame: nothing to inspect there.
+                if !self.isYouTube {
+                    self.videoAd = await self.webView.evaluate(VideoPage.adPlaying, in: .defaultClient) == "true"
                 }
                 try? await Task.sleep(for: .milliseconds(500))
             }

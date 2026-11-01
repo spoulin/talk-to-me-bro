@@ -473,7 +473,15 @@ private struct PlayerBar: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.articleTitle).font(.headline).lineLimit(1)
-                    Text(model.siteName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(model.siteName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        if model.isVideo && model.videoAd {
+                            Label("Ad · muted", systemImage: "speaker.slash.fill")
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(.orange.opacity(0.25), in: Capsule())
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 

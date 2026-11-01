@@ -44,6 +44,7 @@ enum VideoPage {
       }
       const boxRect = box.getBoundingClientRect();
       const ratio = (boxRect.width / boxRect.height) || 16 / 9;
+      if (target.tagName === "VIDEO") target.classList.add("bs-main-video");
       for (let e = target; e && e !== box; e = e.parentElement) e.classList.add("bs-video-chain");
       for (let e = box.parentElement; e; e = e.parentElement) e.classList.add("bs-video-ancestor");
       box.classList.add("bs-video-box");
@@ -66,6 +67,7 @@ enum VideoPage {
       window.scrollTo(0, 0);
       const video = target.tagName === "VIDEO" ? target : box.querySelector("video");
       if (video) video.addEventListener("ended", () => window.webkit.messageHandlers.video.postMessage("ended"));
+      \(adGuard)
       return "ok";
     })()
     """
@@ -96,6 +98,42 @@ enum VideoPage {
       return "none";
     })()
     """
+
+    /// Installed with `focus`: mutes the page while an ad plays and restores the
+    /// sound after. Ad players turn their sound back on when they start, so this
+    /// runs in the page itself, four times a second and on every volume change.
+    /// An ad is spotted by its label in the player ("Publicité 1 de 2", "Ad 1 of
+    /// 2") or the classes ad players use.
+    fileprivate static let adGuard = """
+      if (!window.__bsAdGuard) {
+        window.__bsAdGuard = true;
+        const isAd = () => {
+          const box = document.querySelector(".bs-video-box") || document.body;
+          return /publicit|annonce|advertis|\\bad \\d|commanditaire|sponsor/i.test(box.innerText || "")
+            || !!document.querySelector(".ad-showing, .ad-interrupting, [class*='ima-ad-container'] video");
+        };
+        const apply = () => {
+          const ad = isAd();
+          window.__bsAdActive = ad;
+          for (const v of document.querySelectorAll("video")) {
+            if (ad) {
+              if (!v.dataset.bsAdMute) v.dataset.bsAdMute = v.muted ? "already" : "yes";
+              if (!v.muted) v.muted = true;
+            } else if (v.dataset.bsAdMute) {
+              if (v.dataset.bsAdMute === "yes") v.muted = false;
+              delete v.dataset.bsAdMute;
+            }
+          }
+        };
+        setInterval(apply, 250);
+        for (const type of ["play", "playing", "volumechange", "loadeddata"]) {
+          document.addEventListener(type, () => { if (window.__bsAdActive || isAd()) apply(); }, true);
+        }
+      }
+    """
+
+    /// "true" while an ad plays (and is muted).
+    static let adPlaying = "String(!!window.__bsAdActive)"
 
     /// Whether any video of the page is really playing, ads included.
     static let anythingPlaying = "String([...document.querySelectorAll('video')].some(v => !v.paused && v.currentTime > 0))"

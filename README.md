@@ -69,7 +69,8 @@ Some "articles" are only a video (e.g. `ici.radio-canada.ca/info/videos/…`). W
 video address, or very little text around a large video, the app switches to **video mode**: the original
 page is shown with its player isolated, centered at its proportions over the window, and everything else
 hidden. The usual player bar drives it: position and time left, play/pause, ⟲ 15 s / ⟳ 15 s, speed,
-next article (the site's own controls work too). The video starts by itself (after the site's ads, if any). When the video ends, the next article
+next article (the site's own controls work too). The video starts by itself; the site's ads, if any, are muted ("Ad · muted" in the bar) and the sound
+comes back for the video. When the video ends, the next article
 of the playlist starts. Video pages carry a "Video" badge in To Read.
 
 **YouTube** links (videos, Shorts, `youtu.be`) play in YouTube's embeddable player in privacy mode
