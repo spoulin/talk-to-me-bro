@@ -2,7 +2,8 @@ import Foundation
 import Observation
 
 /// A piece of text spoken in one go, followed by a silence. Paragraphs are
-/// split into sentences, and further at pauses ("…", `[pause]` in the dictionary).
+/// split into sentences, and further at pauses ("…", parentheses and brackets,
+/// `[pause]` in the dictionary).
 struct SpeechSegment {
     let block: Int
     /// The text given to the voice, after dictionary replacements.
@@ -45,7 +46,7 @@ enum SpeechScript {
 
     static func segments(for blocks: [String], from index: Int, pacing: Pacing,
                          entries: [PronunciationEntry]) -> [SpeechSegment] {
-        let rules = Rule.compile(entries)
+        let rules = Rule.compile(entries, pacing: pacing)
         var segments: [SpeechSegment] = []
         for block in index..<blocks.count {
             let firstOfBlock = segments.count
@@ -64,7 +65,6 @@ enum SpeechScript {
         }
         if sentences.isEmpty { sentences = [NSRange(location: 0, length: text.length)] }
 
-        let ellipsisPause = pacing.sentence + 0.3
         for (s, sentence) in sentences.enumerated() {
             var spoken = ""
             var map = SpokenMap()
@@ -94,8 +94,10 @@ enum SpeechScript {
                     append(text.substring(with: gap), original: gap, replaced: false)
                 }
                 switch match.action {
-                case .ellipsis:
-                    close(pause: ellipsisPause)
+                case .pause(let seconds):
+                    close(pause: seconds)
+                case .skip:
+                    break
                 case .replace(let parts):
                     for part in parts {
                         switch part {
@@ -132,7 +134,10 @@ enum SpeechScript {
         }
 
         enum Action {
-            case ellipsis
+            /// A silence instead of the matched text ("…", parentheses).
+            case pause(Double)
+            /// Not read at all (note numbers like "[12]").
+            case skip
             case replace([Part])
         }
 
@@ -140,8 +145,8 @@ enum SpeechScript {
         let action: Action
 
         /// Dictionary entries first (longest words first, so they win over
-        /// shorter ones and over the built-in "…" pause), then "…" and "...".
-        static func compile(_ entries: [PronunciationEntry]) -> [Rule] {
+        /// shorter ones and over the built-in rules), then the built-in rules.
+        static func compile(_ entries: [PronunciationEntry], pacing: Pacing) -> [Rule] {
             let dictionary = entries
                 .filter { !$0.word.trimmingCharacters(in: .whitespaces).isEmpty }
                 .sorted { $0.word.count > $1.word.count }
@@ -153,8 +158,14 @@ enum SpeechScript {
                     else { return nil }
                     return Rule(regex: regex, action: .replace(parts(of: entry.replacement)))
                 }
-            let ellipsis = try! NSRegularExpression(pattern: "\\.{3,}|…")
-            return dictionary + [Rule(regex: ellipsis, action: .ellipsis)]
+            let builtIn = [
+                // Note numbers: "malvoyantes[1]".
+                Rule(regex: try! NSRegularExpression(pattern: "\\[\\d{1,3}\\]"), action: .skip),
+                Rule(regex: try! NSRegularExpression(pattern: "\\.{3,}|…"), action: .pause(pacing.sentence + 0.3)),
+                // A short silence before an aside and after it.
+                Rule(regex: try! NSRegularExpression(pattern: "[()\\[\\]]"), action: .pause(pacing.sentence + 0.15)),
+            ]
+            return dictionary + builtIn
         }
 
         /// "le [pause 1.5] soccer" → text, pause, text.

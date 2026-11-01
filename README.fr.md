@@ -57,7 +57,8 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
   d'origine.
 - `[pause]` (0,6 s) ou `[pause 1.5]` (secondes) dans « À lire comme » ajoute un silence, par exemple
   `—` → `[pause 0.4]`.
-- « … » et « ... » font une pause automatiquement (ajouter une entrée pour les modifier).
+- Pauses automatiques : « … » et « ... », et avant et après les parenthèses et les crochets. Les numéros
+  de note comme `[12]` ne sont pas lus. Une entrée du dictionnaire pour les mêmes caractères a priorité.
 - ▶︎ fait entendre le mot passé par le dictionnaire, avec la voix actuelle.
 
 ## Choix des voix
