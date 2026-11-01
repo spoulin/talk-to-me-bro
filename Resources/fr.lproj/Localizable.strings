@@ -87,3 +87,15 @@
 "Share articles while one is playing to add them here." = "Partagez des articles pendant une lecture pour les ajouter ici.";
 "Next article in the playlist" = "Article suivant de la playlist";
 "Next Article" = "Article suivant";
+
+/* Settings — Pronunciation */
+"Voices" = "Voix";
+"Pronunciation" = "Prononciation";
+"Words to read differently. Write them as they should sound; add [pause] or [pause 1.5] (seconds) for a silence. “…” already makes a pause." = "Mots à lire autrement. Écrivez-les comme ils doivent sonner ; ajoutez [pause] ou [pause 1.5] (secondes) pour un silence. « … » fait déjà une pause.";
+"Word" = "Mot";
+"Read as" = "À lire comme";
+"Listen with the current voice" = "Écouter avec la voix actuelle";
+"No words yet." = "Aucun mot pour l’instant.";
+"Add a word" = "Ajouter un mot";
+"Remove the selected words" = "Retirer les mots sélectionnés";
+"Changes apply from the next paragraph you start." = "Les changements s’appliquent à partir du prochain paragraphe lancé.";

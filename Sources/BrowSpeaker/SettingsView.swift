@@ -1,18 +1,90 @@
 import SwiftUI
 
-/// Réglages (⌘,): optional Piper voices.
+/// Settings (⌘,): optional Piper voices, and the pronunciation dictionary.
 struct SettingsView: View {
     var body: some View {
-        Form {
-            Section {
-                Text("By default, the app reads with macOS voices: free, no account, no connection.")
-                    .foregroundStyle(.secondary)
+        TabView {
+            Form {
+                Section {
+                    Text("By default, the app reads with macOS voices: free, no account, no connection.")
+                        .foregroundStyle(.secondary)
+                }
+
+                PiperSettings()
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("Voices", systemImage: "person.wave.2") }
+
+            PronunciationSettings()
+                .tabItem { Label("Pronunciation", systemImage: "character.bubble") }
+        }
+        .frame(width: 580, height: 540)
+    }
+}
+
+/// Words read differently, e.g. "soccer" → "soqueur", and pauses with [pause].
+private struct PronunciationSettings: View {
+    @Bindable private var dictionary = Pronunciations.shared
+    @State private var selection = Set<UUID>()
+    /// Plays a word through the dictionary with the current voice.
+    @State private var preview: SpeechController?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Words to read differently. Write them as they should sound; add [pause] or [pause 1.5] (seconds) for a silence. “…” already makes a pause.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            List(selection: $selection) {
+                ForEach($dictionary.entries) { $entry in
+                    HStack {
+                        TextField("Word", text: $entry.word, prompt: Text(verbatim: "soccer"))
+                        Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                        TextField("Read as", text: $entry.replacement, prompt: Text(verbatim: "soqueur"))
+                        Button { listen(to: entry) } label: { Image(systemName: "play.circle") }
+                            .buttonStyle(.borderless)
+                            .help("Listen with the current voice")
+                            .disabled(entry.word.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .textFieldStyle(.roundedBorder)
+                    .tag(entry.id)
+                }
+                .onDelete { dictionary.entries.remove(atOffsets: $0) }
+            }
+            .onDeleteCommand(perform: removeSelected)
+            .overlay {
+                if dictionary.entries.isEmpty {
+                    Text("No words yet.").foregroundStyle(.secondary)
+                }
             }
 
-            PiperSettings()
+            HStack {
+                Button { dictionary.entries.append(PronunciationEntry()) } label: { Image(systemName: "plus") }
+                    .help("Add a word")
+                Button(action: removeSelected) { Image(systemName: "minus") }
+                    .help("Remove the selected words")
+                    .disabled(selection.isEmpty)
+                Spacer()
+                Text("Changes apply from the next paragraph you start.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .formStyle(.grouped)
-        .frame(width: 540, height: 520)
+        .padding()
+    }
+
+    private func removeSelected() {
+        dictionary.entries.removeAll { selection.contains($0.id) }
+        selection = []
+    }
+
+    /// Reads the word itself, so what you hear is the dictionary rule at work.
+    private func listen(to entry: PronunciationEntry) {
+        preview?.stop()
+        let controller = SpeechController()
+        preview = controller
+        controller.speak([entry.word], from: 0)
     }
 }
 

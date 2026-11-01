@@ -1,14 +1,14 @@
 @preconcurrency import AVFoundation
 import Foundation
 
-/// Turns one paragraph into an audio file (WAV, MP3…).
+/// Turns a piece of text into an audio file (WAV, MP3…).
 protocol ClipSynthesizer {
-    /// `sentencePause`: seconds of silence the service should leave between sentences, if it can.
-    func synthesize(_ text: String, voice: String, speed: Double, sentencePause: Double) async throws -> Data
+    func synthesize(_ text: String, voice: String, speed: Double) async throws -> Data
 }
 
-/// Engine for voices that produce audio clips (Piper, or a cloud service): each paragraph
-/// is synthesized, then played, while the next one is synthesized.
+/// Engine for voices that produce audio clips (Piper, or a cloud service): each
+/// segment is synthesized, then played and followed by its silence, while the
+/// next ones are synthesized.
 ///
 /// These services return audio without word timings, so the spoken word is
 /// estimated from the playback position.
@@ -22,25 +22,23 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
     }
 
     private var generation = 0
-    private var blocks: [String] = []
+    private var segments: [SpeechSegment] = []
     private var voiceID = ""
     private var speed = 1.0
-    private var pacing = Pacing.medium
     private var index = 0
     private var isPaused = false
-    /// The next paragraph, when pause was pressed during the silence before it.
+    /// The next segment, when pause was pressed during the silence before it.
     private var pendingNext: (() -> Void)?
     private var player: AVAudioPlayer?
     private var downloads: [Int: Task<Data, Error>] = [:]
     private var wordTimer: Timer?
 
-    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double, pacing: Pacing) {
+    func start(_ segments: [SpeechSegment], voiceID: String?, speed: Double) {
         stop()
-        self.blocks = blocks
+        self.segments = segments
         self.voiceID = voiceID ?? ""
         self.speed = speed
-        self.pacing = pacing
-        play(index, generation: generation)
+        play(0, generation: generation)
     }
 
     func pause() {
@@ -72,18 +70,18 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
 
     private func audio(for i: Int) -> Task<Data, Error> {
         if let task = downloads[i] { return task }
-        let text = blocks[i], voice = voiceID, speed = speed, sentencePause = pacing.sentence
+        let text = segments[i].spoken, voice = voiceID, speed = speed
         let synthesizer = synthesizer
-        let task = Task { try await synthesizer.synthesize(text, voice: voice, speed: speed, sentencePause: sentencePause) }
+        let task = Task { try await synthesizer.synthesize(text, voice: voice, speed: speed) }
         downloads[i] = task
         return task
     }
 
     private func play(_ i: Int, generation: Int) {
-        guard i < blocks.count else { return events.finished() }
+        guard i < segments.count else { return events.finished() }
         index = i
         let current = audio(for: i)
-        if i + 1 < blocks.count { _ = audio(for: i + 1) }
+        for ahead in (i + 1)..<min(i + 3, segments.count) { _ = audio(for: ahead) }
         Task {
             do {
                 let data = try await current.value
@@ -92,10 +90,10 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
                 let player = try AVAudioPlayer(data: data)
                 player.delegate = self
                 self.player = player
-                events.blockStarted(i)
+                if segments[i].isFirstInBlock { events.blockStarted(segments[i].block) }
                 player.play()
                 if isPaused { player.pause() }
-                trackWords(of: i, in: player)
+                trackWords(of: segments[i], in: player)
             } catch {
                 guard generation == self.generation, !(error is CancellationError) else { return }
                 stop()
@@ -106,8 +104,8 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
 
     /// Estimates the spoken word from the playback position, weighting each
     /// word by its length.
-    private func trackWords(of i: Int, in player: AVAudioPlayer) {
-        let text = blocks[i] as NSString
+    private func trackWords(of segment: SpeechSegment, in player: AVAudioPlayer) {
+        let text = segment.spoken as NSString
         var words: [NSRange] = []
         text.enumerateSubstrings(in: NSRange(location: 0, length: text.length), options: .byWords) { _, range, _, _ in
             words.append(range)
@@ -127,10 +125,10 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
                 guard let self, let player, player === self.player else { return }
                 let progress = player.currentTime / player.duration
                 let w = ends.firstIndex { $0 >= progress } ?? words.count - 1
-                if w != last {
-                    last = w
-                    self.events.willSpeak(i, words[w])
-                }
+                guard w != last else { return }
+                last = w
+                let original = segment.map.original(for: words[w])
+                if original.location != NSNotFound { self.events.willSpeak(segment.block, original) }
             }
         }
     }
@@ -139,9 +137,9 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
         guard let player, ObjectIdentifier(player) == id else { return }
         self.player = nil
         wordTimer?.invalidate()
-        let generation = generation, next = index + 1
+        let generation = generation, next = index + 1, pause = segments[index].pauseAfter
         Task {
-            try? await Task.sleep(for: .seconds(pacing.paragraph))
+            try? await Task.sleep(for: .seconds(pause))
             guard generation == self.generation else { return }
             if isPaused {
                 pendingNext = { [weak self] in self?.play(next, generation: generation) }

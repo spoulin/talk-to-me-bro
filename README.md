@@ -48,6 +48,15 @@ the time left, the playback controls, speed and pauses, voice, and text size.
   reorder, Delete or right-click to remove, *Clear* to empty it, double-click to play one now.
 - The playlist is kept when the app quits; the welcome screen offers to resume it.
 
+## Pronunciation
+
+**Settings › Pronunciation**: a dictionary of words to read differently, e.g. `soccer` → `soqueur`.
+
+- Matching ignores case and only replaces whole words; the highlight stays on the original word.
+- `[pause]` (0.6 s) or `[pause 1.5]` (seconds) in "Read as" adds a silence, e.g. `—` → `[pause 0.4]`.
+- "…" and "..." make a pause automatically (add an entry for them to change it).
+- ▶︎ plays the word through the dictionary with the current voice.
+
 ## Voices
 
 Two engines, chosen from the voice menu in the player bar; everything stays on the Mac:
@@ -112,8 +121,10 @@ reading starts.
 - `SpeechController`: playback state, choice of voice and engine (`SpeechEngine`).
 - `SystemSpeechEngine`: `AVSpeechSynthesizer` with the system voice (`NSSpeechSynthesizer.defaultVoice`),
   read again at each playback.
-- `ClipSpeechEngine`: engines that produce one audio file per paragraph (Piper), fetching the next
-  paragraph while the current one plays.
+- `SpeechScript`: splits paragraphs into segments (sentences, pauses) and applies the pronunciation
+  dictionary, keeping a map back to the article text for highlighting.
+- `ClipSpeechEngine`: engines that produce one audio file per segment (Piper), fetching the next
+  ones while the current one plays.
 - **Siri** voices aren't available to third-party apps: when one is selected, the app uses another voice
   of the same language (shown as "fallback" in the menu).
 

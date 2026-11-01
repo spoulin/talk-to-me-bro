@@ -49,6 +49,17 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
   écouter un article tout de suite.
 - La playlist est conservée quand on quitte l'app ; l'écran d'accueil propose de la reprendre.
 
+## Prononciation
+
+**Réglages › Prononciation** : un dictionnaire de mots à lire autrement, par exemple `soccer` → `soqueur`.
+
+- Sans tenir compte des majuscules, et seulement sur des mots entiers ; le surlignage reste sur le mot
+  d'origine.
+- `[pause]` (0,6 s) ou `[pause 1.5]` (secondes) dans « À lire comme » ajoute un silence, par exemple
+  `—` → `[pause 0.4]`.
+- « … » et « ... » font une pause automatiquement (ajouter une entrée pour les modifier).
+- ▶︎ fait entendre le mot passé par le dictionnaire, avec la voix actuelle.
+
 ## Choix des voix
 
 Deux moteurs, choisis dans le menu des voix de la barre du lecteur ; tout reste sur le Mac :
@@ -113,8 +124,10 @@ existante, passe en mode lecture et la lecture commence.
 - `SpeechController` : état de lecture, choix de la voix et du moteur (`SpeechEngine`).
 - `SystemSpeechEngine` : `AVSpeechSynthesizer`, avec la voix système (`NSSpeechSynthesizer.defaultVoice`),
   relue à chaque lecture.
-- `ClipSpeechEngine` : moteurs qui produisent un fichier audio par paragraphe (Piper), avec
-  préchargement du paragraphe suivant.
+- `SpeechScript` : découpe les paragraphes en segments (phrases, pauses) et applique le dictionnaire de
+  prononciation, en gardant le lien avec le texte de l'article pour le surlignage.
+- `ClipSpeechEngine` : moteurs qui produisent un fichier audio par segment (Piper), avec
+  préchargement des suivants.
 - Les voix **Siri** ne sont pas accessibles aux applications tierces : dans ce cas, Talk to me Bro
   prend une voix de la même langue (indiqué « remplacement » dans le menu).
 

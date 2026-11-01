@@ -3,8 +3,8 @@ import Darwin
 import Observation
 
 struct PiperSynthesizer: ClipSynthesizer {
-    func synthesize(_ text: String, voice: String, speed: Double, sentencePause: Double) async throws -> Data {
-        try await PiperService.shared.synthesize(text, voice: voice, speed: speed, sentencePause: sentencePause)
+    func synthesize(_ text: String, voice: String, speed: Double) async throws -> Data {
+        try await PiperService.shared.synthesize(text, voice: voice, speed: speed)
     }
 }
 
@@ -49,8 +49,6 @@ final class PiperService {
 
     @ObservationIgnored private var server: Process?
     @ObservationIgnored private var port = 0
-    /// Piper only takes the pause between sentences when its server starts.
-    @ObservationIgnored private var serverSentencePause = 0.0
     @ObservationIgnored private var serverStart: Task<Int, Error>?
 
     /// Kept short on purpose: espeak-ng (bundled with Piper) fails to find its
@@ -175,8 +173,8 @@ final class PiperService {
 
     // MARK: Synthesis
 
-    func synthesize(_ text: String, voice: String, speed: Double, sentencePause: Double) async throws -> Data {
-        let port = try await ensureServer(voice: voice, sentencePause: sentencePause)
+    func synthesize(_ text: String, voice: String, speed: Double) async throws -> Data {
+        let port = try await ensureServer(voice: voice)
         var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/synthesize")!, timeoutInterval: 60)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -189,19 +187,16 @@ final class PiperService {
         return data
     }
 
-    private func ensureServer(voice: String, sentencePause: Double) async throws -> Int {
+    private func ensureServer(voice: String) async throws -> Int {
         if let serverStart { return try await serverStart.value }
-        if let server, server.isRunning {
-            if serverSentencePause == sentencePause { return port }
-            stopServer()
-        }
-        let start = Task { try await startServer(voice: voice, sentencePause: sentencePause) }
+        if let server, server.isRunning { return port }
+        let start = Task { try await startServer(voice: voice) }
         serverStart = start
         defer { serverStart = nil }
         return try await start.value
     }
 
-    private func startServer(voice: String, sentencePause: Double) async throws -> Int {
+    private func startServer(voice: String) async throws -> Int {
         guard isInstalled else { throw Failure(String(localized: "Piper is not installed")) }
         let port = Self.freePort()
         let process = Process()
@@ -213,15 +208,13 @@ final class PiperService {
         while kill -0 \(getpid()) 2>/dev/null && kill -0 $c 2>/dev/null; do sleep 2; done; kill $c 2>/dev/null
         """
         process.arguments = ["-c", watchdog, Self.python.path, "-m", "piper.http_server",
-                             "--host", "127.0.0.1", "--port", "\(port)", "--data-dir", Self.voicesDir.path, "-m", voice,
-                             "--sentence-silence", "\(sentencePause)"]
+                             "--host", "127.0.0.1", "--port", "\(port)", "--data-dir", Self.voicesDir.path, "-m", voice]
         let log = try Self.openLog()
         process.standardOutput = log
         process.standardError = log
         try process.run()
         server = process
         self.port = port
-        serverSentencePause = sentencePause
 
         let probe = URL(string: "http://127.0.0.1:\(port)/voices")!
         for _ in 0..<80 {

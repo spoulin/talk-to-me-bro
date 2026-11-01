@@ -1,13 +1,13 @@
 import Foundation
 import Observation
 
-/// Something that reads text blocks aloud. Once `stop()` returns, an engine
-/// must not send any more events.
+/// Something that reads segments aloud, with the silence each one asks for.
+/// Once `stop()` returns, an engine must not send any more events.
 @MainActor
 protocol SpeechEngine: AnyObject {
     var events: SpeechEngineEvents { get set }
-    /// Speaks `blocks[index...]` in order. `voiceID` is engine-specific; nil means its default voice.
-    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double, pacing: Pacing)
+    /// `voiceID` is engine-specific; nil means its default voice.
+    func start(_ segments: [SpeechSegment], voiceID: String?, speed: Double)
     func pause()
     func resume()
     func stop()
@@ -144,17 +144,18 @@ final class SpeechController {
     func jump(to index: Int) {
         engine?.stop()
         engine = nil
-        guard blocks.indices.contains(index) else {
+        let segments = blocks.indices.contains(index) ? segments(from: index) : []
+        guard !segments.isEmpty else {
             finish()
             // "Next paragraph" past the last one also ends the article.
-            if index >= blocks.count, !blocks.isEmpty { onComplete?() }
+            if !blocks.isEmpty { onComplete?() }
             return
         }
         let (engine, voiceID) = resolveEngine()
         self.engine = engine
         currentIndex = index
         state = .speaking
-        engine.start(blocks, at: index, voiceID: voiceID, speed: speed, pacing: pacing)
+        engine.start(segments, voiceID: voiceID, speed: speed)
     }
 
     func pause() {
@@ -186,6 +187,10 @@ final class SpeechController {
         jump(to: max(currentIndex - 1, 0))
     }
 
+    private func segments(from index: Int) -> [SpeechSegment] {
+        SpeechScript.segments(for: blocks, from: index, pacing: pacing, entries: Pronunciations.shared.entries)
+    }
+
     private func resolveEngine() -> (SpeechEngine, String?) {
         switch Voice.parse(voiceKey) {
         case (.piper, let id?) where PiperService.shared.isInstalled:
@@ -204,7 +209,7 @@ final class SpeechController {
         let index = currentIndex ?? 0
         engine = systemEngine
         state = .speaking
-        systemEngine.start(blocks, at: index, voiceID: nil, speed: speed, pacing: pacing)
+        systemEngine.start(segments(from: index), voiceID: nil, speed: speed)
     }
 
     private func restartIfSpeaking() {
