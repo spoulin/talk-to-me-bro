@@ -18,6 +18,9 @@ struct SettingsView: View {
 
             PronunciationSettings()
                 .tabItem { Label("Pronunciation", systemImage: "character.bubble") }
+
+            SourcesSettings()
+                .tabItem { Label("Sources", systemImage: "dot.radiowaves.up.forward") }
         }
         .frame(width: 580, height: 540)
     }
@@ -56,6 +59,73 @@ private struct VoiceRolesSettings: View {
                     Text(voice.label).tag(Optional(voice.key))
                 }
             }
+        }
+    }
+}
+
+/// Sites and RSS feeds whose latest articles are listed on the home screen.
+private struct SourcesSettings: View {
+    private var feeds = Feeds.shared
+    @State private var address = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Paste the address of a site (e.g. example.com/news) or of an RSS feed. For a site, the app looks for its feed, or else takes the article links from the page.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                TextField("Site or RSS feed address", text: $address)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(add)
+                Button("Add", action: add)
+                    .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty || feeds.isAdding)
+                if feeds.isAdding { ProgressView().controlSize(.small) }
+            }
+            if let error = feeds.addError {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+
+            List {
+                ForEach(feeds.sources) { source in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(source.title).lineLimit(1)
+                            HStack(spacing: 4) {
+                                Text(source.mode == .feed ? LocalizedStringKey("RSS feed")
+                                                          : LocalizedStringKey("Links from the page (approximate)"))
+                                Text(verbatim: "· \(source.url.host() ?? "")")
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            if let error = source.lastError {
+                                Text(error).font(.caption).foregroundStyle(.red)
+                            }
+                        }
+                        Spacer()
+                        Button { feeds.remove(source) } label: { Image(systemName: "trash") }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.secondary)
+                            .help("Remove")
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+            .overlay {
+                if feeds.sources.isEmpty {
+                    Text("No sources yet.").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+    }
+
+    private func add() {
+        let text = address
+        Task {
+            await feeds.add(text)
+            if feeds.addError == nil { address = "" }
         }
     }
 }

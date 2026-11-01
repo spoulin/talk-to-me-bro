@@ -154,6 +154,26 @@ final class BrowserModel: NSObject {
         start(item.url)
     }
 
+    func play(_ url: URL) {
+        start(url)
+    }
+
+    /// Queues the articles and starts the first one if nothing is playing.
+    func listenToAll(_ urls: [URL]) {
+        urls.forEach { playlist.add($0) }
+        if phase != .ready || speech.state == .idle { playNextInPlaylist() }
+    }
+
+    /// Whether an article is in the history (query and fragment ignored).
+    func hasRead(_ url: URL) -> Bool {
+        let key = Self.readKey(url)
+        return history.items.contains { Self.readKey($0.url) == key }
+    }
+
+    private static func readKey(_ url: URL) -> String {
+        (url.host() ?? "") + url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
     func addToPlaylist(_ url: URL) {
         showNotice(playlist.add(url) ? String(localized: "Added to playlist") : String(localized: "Already in the playlist"))
     }

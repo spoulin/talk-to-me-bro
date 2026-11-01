@@ -50,6 +50,17 @@ the time left, the playback controls, speed and pauses, voice, and text size.
   reorder, Delete or right-click to remove, *Clear* to empty it, double-click to play one now.
 - The playlist is kept when the app quits; the welcome screen offers to resume it.
 
+## Sources
+
+**Settings › Sources**: paste the address of a site (e.g. `example.com/news`) or of an RSS/Atom feed.
+For a site, the app looks for the feed the page announces, then tries the usual feed addresses
+(`…/rss`, `/feed`, `/rss.xml`…), and otherwise loads the page (JavaScript included) and keeps its article
+links ("approximate" mode, no dates).
+
+The home screen then shows **To Read**: the latest articles of all sources, newest first; already read
+ones are dimmed. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones.
+Sources refresh at launch and every 30 minutes (↻ to refresh now).
+
 ## History
 
 The history button (🕘) in the toolbar lists the last 50 articles read; click one to read it again.

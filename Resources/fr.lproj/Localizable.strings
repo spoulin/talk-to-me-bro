@@ -118,3 +118,27 @@
 "Add to Playlist" = "Ajouter à la playlist";
 "Remove from History" = "Retirer de l’historique";
 "%@ · %@" = "%1$@ · %2$@";
+
+/* Sources */
+"Sources" = "Sources";
+"Paste the address of a site (e.g. example.com/news) or of an RSS feed. For a site, the app looks for its feed, or else takes the article links from the page." = "Collez l’adresse d’un site (ex. : example.com/nouvelles) ou d’un flux RSS. Pour un site, l’app cherche son flux, sinon elle prend les liens d’articles de la page.";
+"Site or RSS feed address" = "Adresse d’un site ou d’un flux RSS";
+"Add" = "Ajouter";
+"RSS feed" = "Flux RSS";
+"Links from the page (approximate)" = "Liens de la page (approximatif)";
+"No sources yet." = "Aucune source pour l’instant.";
+"“%@” is not a web address." = "« %@ » n’est pas une adresse web.";
+"No articles found at this address." = "Aucun article trouvé à cette adresse.";
+"This source is already in the list." = "Cette source est déjà dans la liste.";
+"The feed could not be read." = "Le flux n’a pas pu être lu.";
+"No article links found on the page." = "Aucun lien d’article trouvé sur la page.";
+"Add sites or RSS feeds…" = "Ajouter des sites ou des flux RSS…";
+"Share an article from your browser, drag a link here, or pick one below." = "Partagez un article depuis votre navigateur, glissez un lien ici, ou choisissez-en un ci-dessous.";
+"Add sites or RSS feeds to see their latest articles here." = "Ajoutez des sites ou des flux RSS pour voir leurs derniers articles ici.";
+"Add Sources…" = "Ajouter des sources…";
+"To Read" = "À lire";
+"Refresh" = "Actualiser";
+"Listen to All" = "Tout écouter";
+"Add the unread articles to the playlist and start listening" = "Ajouter les articles non lus à la playlist et commencer l’écoute";
+"Manage sources" = "Gérer les sources";
+"No articles yet." = "Aucun article pour l’instant.";

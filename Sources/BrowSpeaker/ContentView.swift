@@ -58,6 +58,13 @@ struct ContentView: View {
         .focusedSceneValue(\.browser, model)
         .onDisappear { model.speech.stop() }
         .onOpenURL { model.handleOpenURL($0) }
+        // Sources refresh at launch, then every 30 minutes.
+        .task {
+            while !Task.isCancelled {
+                await Feeds.shared.refreshIfNeeded()
+                try? await Task.sleep(for: .seconds(300))
+            }
+        }
         // Shared links go to an existing window instead of opening a new one.
         .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         .frame(minWidth: 640, minHeight: 480)
@@ -84,73 +91,183 @@ struct ContentView: View {
     }
 }
 
-/// Shown when no article is open, and while one loads.
+/// Shown when no article is open, and while one loads: a short introduction
+/// on first use, then a home page with the playlist, sources and history.
 private struct WelcomeView: View {
     let model: BrowserModel
+    private var feeds = Feeds.shared
+
+    init(model: BrowserModel) {
+        self.model = model
+    }
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 112, height: 112)
+        Group {
             if model.phase == .loading {
-                Text("Loading article…").font(.title2.weight(.semibold))
-                Text(model.loadingHost).foregroundStyle(.secondary)
-                ProgressView(value: model.progress).frame(width: 260)
-                Button("Cancel") { model.closeArticle() }
+                VStack(spacing: 18) {
+                    appIcon(112)
+                    Text("Loading article…").font(.title2.weight(.semibold))
+                    Text(model.loadingHost).foregroundStyle(.secondary)
+                    ProgressView(value: model.progress).frame(width: 260)
+                    Button("Cancel") { model.closeArticle() }
+                }
+            } else if model.playlist.items.isEmpty && model.history.items.isEmpty && feeds.sources.isEmpty {
+                VStack(spacing: 18) {
+                    appIcon(112)
+                    Text("Talk to me Bro").font(.largeTitle.weight(.bold))
+                    Text("Listen to your articles, without ads or distractions.")
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 8)
+                    instructions.frame(maxWidth: 420, alignment: .leading)
+                    SettingsLink { Text("Add sites or RSS feeds…") }
+                        .padding(.top, 8)
+                }
             } else {
-                Text("Talk to me Bro").font(.largeTitle.weight(.bold))
-                Text("Listen to your articles, without ads or distractions.")
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 8)
-                VStack(alignment: .leading, spacing: 14) {
-                    Label {
-                        Text("In your browser, open an article and choose **Share › Read with Talk to me Bro**.")
-                    } icon: { Image(systemName: "square.and.arrow.up") }
-                    Label("Or drag a link into this window.", systemImage: "arrow.down.to.line")
-                    Label("Or copy a link, then press ⇧⌘V.", systemImage: "doc.on.clipboard")
-                }
-                .font(.callout)
-                .frame(maxWidth: 420, alignment: .leading)
-                if !model.playlist.items.isEmpty {
-                    VStack(spacing: 10) {
-                        Button { model.playNextInPlaylist() } label: {
-                            Label("Play Playlist", systemImage: "play.fill")
-                        }
-                        .controlSize(.large)
-                        .keyboardShortcut(.defaultAction)
-                        PlaylistView(model: model)
-                            .frame(height: 260)
-                            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    .frame(maxWidth: 460)
-                    .padding(.top, 16)
-                } else if !model.history.items.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Recently read").font(.headline)
-                        ForEach(model.history.items.prefix(5)) { item in
-                            Button { model.reopen(item) } label: {
-                                HStack {
-                                    Image(systemName: "play.circle").foregroundStyle(.tint)
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(item.title).lineLimit(1)
-                                        Text(item.site).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                    }
-                                    Spacer()
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .frame(maxWidth: 460)
-                    .padding(.top, 16)
-                }
+                home
             }
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
+    }
+
+    private var instructions: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label {
+                Text("In your browser, open an article and choose **Share › Read with Talk to me Bro**.")
+            } icon: { Image(systemName: "square.and.arrow.up") }
+            Label("Or drag a link into this window.", systemImage: "arrow.down.to.line")
+            Label("Or copy a link, then press ⇧⌘V.", systemImage: "doc.on.clipboard")
+        }
+        .font(.callout)
+    }
+
+    private func appIcon(_ size: CGFloat) -> some View {
+        Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: size, height: size)
+    }
+
+    private var home: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                HStack(spacing: 14) {
+                    appIcon(56)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Talk to me Bro").font(.title2.weight(.bold))
+                        Text("Share an article from your browser, drag a link here, or pick one below.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if !model.playlist.items.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Playlist").font(.title3.weight(.semibold))
+                            Spacer()
+                            Button { model.playNextInPlaylist() } label: { Label("Play Playlist", systemImage: "play.fill") }
+                                .keyboardShortcut(.defaultAction)
+                        }
+                        PlaylistView(model: model)
+                            .frame(height: 220)
+                            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+
+                if feeds.sources.isEmpty {
+                    HStack {
+                        Text("Add sites or RSS feeds to see their latest articles here.")
+                            .foregroundStyle(.secondary)
+                        SettingsLink { Text("Add Sources…") }
+                    }
+                } else {
+                    ToReadSection(model: model)
+                }
+
+                if !model.history.items.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Recently read").font(.title3.weight(.semibold))
+                        ForEach(model.history.items.prefix(5)) { item in
+                            ArticleRow(title: item.title, detail: item.site, isRead: false) { model.reopen(item) }
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: 680, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.automatic)
+    }
+}
+
+/// The latest articles of the user's sources.
+private struct ToReadSection: View {
+    let model: BrowserModel
+    private var feeds = Feeds.shared
+
+    init(model: BrowserModel) {
+        self.model = model
+    }
+
+    var body: some View {
+        let items = Array(feeds.latest.prefix(20))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("To Read").font(.title3.weight(.semibold))
+                if feeds.isRefreshing { ProgressView().controlSize(.small) }
+                Spacer()
+                Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
+                    .help("Refresh")
+                    .disabled(feeds.isRefreshing)
+                Button {
+                    model.listenToAll(items.filter { !model.hasRead($0.url) }.map(\.url))
+                } label: { Label("Listen to All", systemImage: "text.badge.plus") }
+                    .help("Add the unread articles to the playlist and start listening")
+                    .disabled(items.allSatisfy { model.hasRead($0.url) })
+                SettingsLink { Image(systemName: "gearshape") }
+                    .help("Manage sources")
+            }
+            if items.isEmpty {
+                Text("No articles yet.").foregroundStyle(.secondary)
+            }
+            ForEach(items) { item in
+                HStack {
+                    ArticleRow(title: item.title, detail: detail(of: item), isRead: model.hasRead(item.url)) {
+                        model.play(item.url)
+                    }
+                    Button { model.addToPlaylist(item.url) } label: { Image(systemName: "plus.circle") }
+                        .buttonStyle(.borderless)
+                        .help("Add to Playlist")
+                }
+            }
+        }
+    }
+
+    private func detail(of item: FeedItem) -> String {
+        guard let date = item.date else { return item.sourceTitle }
+        return "\(item.sourceTitle) · \(date.formatted(.relative(presentation: .named)))"
+    }
+}
+
+/// A clickable article line: title and a detail line; dimmed once read.
+private struct ArticleRow: View {
+    let title: String
+    let detail: String
+    let isRead: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: isRead ? "checkmark.circle" : "play.circle").foregroundStyle(isRead ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).lineLimit(1).foregroundStyle(isRead ? .secondary : .primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
