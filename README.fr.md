@@ -10,6 +10,8 @@ mise en page (façon « Just Read ») et le **lit à voix haute**, avec la voix 
 ## Construire
 
 ```bash
+git clone https://github.com/spoulin/talk-to-me-bro.git
+cd talk-to-me-bro
 scripts/build-app.sh
 open "build/Talk to me Bro.app"
 ```
@@ -184,3 +186,9 @@ L'interface est en anglais par défaut et en français si le Mac est en françai
 
 Le code et les identifiants internes gardent l'ancien nom (`BrowSpeaker`, `local.browspeaker`,
 `browspeaker://`) : le nom affiché peut changer sans casser le partage ni « Ouvrir avec ».
+
+## Licence
+
+[MIT](LICENSE). Inclut [Mozilla Readability](https://github.com/mozilla/readability)
+(`Resources/Readability.js`, Apache 2.0). Piper n'est pas inclus : l'app l'installe sur demande, sous sa
+propre licence ([GPL-3.0](https://github.com/OHF-Voice/piper1-gpl)).

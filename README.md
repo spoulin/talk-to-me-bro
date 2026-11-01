@@ -10,6 +10,8 @@ clutter (like "Just Read") and **reads it aloud**, with a macOS voice or a local
 ## Build
 
 ```bash
+git clone https://github.com/spoulin/talk-to-me-bro.git
+cd talk-to-me-bro
 scripts/build-app.sh
 open "build/Talk to me Bro.app"
 ```
@@ -180,3 +182,9 @@ the translated `Localizable.strings` (and `InfoPlist.strings` for the share exte
 
 The code and internal identifiers keep the original name (`BrowSpeaker`, `local.browspeaker`,
 `browspeaker://`), so the display name can change without breaking sharing or "Open With".
+
+## License
+
+[MIT](LICENSE). Includes [Mozilla Readability](https://github.com/mozilla/readability)
+(`Resources/Readability.js`, Apache 2.0). Piper is not included: the app installs it on request, under its
+own license ([GPL-3.0](https://github.com/OHF-Voice/piper1-gpl)).
