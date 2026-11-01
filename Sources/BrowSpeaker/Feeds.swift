@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 import WebKit
 
 struct FeedSource: Codable, Identifiable, Hashable {
@@ -18,6 +19,8 @@ struct FeedSource: Codable, Identifiable, Hashable {
     var mode: Mode
     var title: String
     var lastError: String?
+    /// Last time a source read from its page was checked for a feed.
+    var feedCheckedAt: Date?
 }
 
 struct FeedItem: Codable, Identifiable, Hashable {
@@ -40,6 +43,7 @@ final class Feeds {
     static let shared = Feeds()
     private static let itemsPerSource = 30
     static let refreshInterval: TimeInterval = 30 * 60
+    static let log = Logger(subsystem: "local.browspeaker", category: "feeds")
 
     private(set) var sources: [FeedSource] = [] {
         didSet { save(sources, as: "feedSources") }
@@ -51,7 +55,7 @@ final class Feeds {
     private(set) var isAdding = false
     private(set) var addError: String?
     @ObservationIgnored private var lastRefresh = Date.distantPast
-    @ObservationIgnored private var upgradeChecked = Set<UUID>()
+    private static let feedCheckInterval: TimeInterval = 7 * 24 * 3600
 
     init() {
         sources = load("feedSources") ?? []
@@ -122,20 +126,29 @@ final class Feeds {
         isRefreshing = true
         defer { isRefreshing = false }
         lastRefresh = Date()
-        for source in sources { await refresh(source) }
+        // All at once: the wait is the slowest source, not the sum.
+        await withTaskGroup(of: Void.self) { group in
+            for source in sources { group.addTask { await self.refresh(source) } }
+        }
     }
 
     private func refresh(_ source: FeedSource) async {
+        let started = Date()
+        defer { Self.log.info("refreshed \(source.title, privacy: .public) in \(Date().timeIntervalSince(started), format: .fixed(precision: 1), privacy: .public)s") }
         var source = source
         // A source read from its page (or added before feeds were found this way):
-        // look for a feed again, once per launch.
-        if source.mode == .page, upgradeChecked.insert(source.id).inserted,
-           let feed = await Self.discover(source.address, feedsOnly: true),
-           let index = sources.firstIndex(where: { $0.id == source.id }) {
-            sources[index].url = feed.url
-            sources[index].mode = .feed
-            sources[index].title = feed.title
-            source = sources[index]
+        // look for a feed again, once a week.
+        if source.mode == .page, Date().timeIntervalSince(source.feedCheckedAt ?? .distantPast) > Self.feedCheckInterval {
+            let feed = await Self.discover(source.address, feedsOnly: true)
+            if let index = sources.firstIndex(where: { $0.id == source.id }) {
+                sources[index].feedCheckedAt = Date()
+                if let feed {
+                    sources[index].url = feed.url
+                    sources[index].mode = .feed
+                    sources[index].title = feed.title
+                }
+                source = sources[index]
+            }
         }
         var fetched: [(url: URL, title: String, date: Date?, image: URL?)] = []
         var error: String?
@@ -408,8 +421,18 @@ final class PageLinks: NSObject, WKNavigationDelegate {
             finished = continuation
             webView.load(URLRequest(url: page, timeoutInterval: 20))
         }
-        // Let scripts fill in the page.
-        try? await Task.sleep(for: .seconds(2))
+        // Let scripts fill in the page: read the links until they stop changing (3 s at most).
+        var links: [Link] = []
+        for _ in 0..<6 {
+            try? await Task.sleep(for: .milliseconds(500))
+            let found = await readLinks()
+            if found.count >= 10, found.count == links.count { return found }
+            links = found
+        }
+        return links
+    }
+
+    private func readLinks() async -> [Link] {
         let script = """
         (() => {
           const seen = new Set(), out = [];
