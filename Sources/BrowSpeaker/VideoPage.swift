@@ -70,6 +70,25 @@ enum VideoPage {
     })()
     """
 
+    private static let video = "(document.querySelector('.bs-video-box video') || document.querySelector('video'))"
+
+    /// {t: current time, d: duration, p: playing} for the player bar.
+    static let state = """
+    (() => { const v = \(video); return v ? JSON.stringify({t: v.currentTime || 0, d: isFinite(v.duration) ? v.duration : 0, p: !v.paused}) : "null"; })()
+    """
+
+    static func seek(to seconds: Double) -> String {
+        "(() => { const v = \(video); if (v) v.currentTime = Math.max(0, \(seconds)); })()"
+    }
+
+    static func skip(by seconds: Double) -> String {
+        "(() => { const v = \(video); if (v) v.currentTime = Math.max(0, v.currentTime + \(seconds)); })()"
+    }
+
+    static func rate(_ speed: Double) -> String {
+        "(() => { const v = \(video); if (v) v.playbackRate = \(speed); })()"
+    }
+
     /// Play or pause the page's video (menu and keyboard shortcut).
     static let togglePlayback = """
     (() => {

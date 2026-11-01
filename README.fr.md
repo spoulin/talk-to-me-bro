@@ -70,7 +70,8 @@ actualiser).
 Certains « articles » ne sont qu'une vidéo (ex. : `ici.radio-canada.ca/info/videos/…`). Quand une page a
 une adresse de vidéo, ou très peu de texte autour d'une grande vidéo, l'app passe en **mode vidéo** : la
 page d'origine est affichée avec son lecteur isolé, centré à ses proportions dans la fenêtre, et le reste
-masqué. On utilise le lecteur du site (lecture, volume, plein écran). À la fin de la vidéo, l'article
+masqué. La barre du lecteur habituelle le pilote : position et temps restant, lecture/pause,
+⟲ 15 s / ⟳ 15 s, vitesse, article suivant (les commandes du site marchent aussi). À la fin de la vidéo, l'article
 suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
 
 ## Historique

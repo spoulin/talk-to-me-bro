@@ -68,7 +68,8 @@ Sources refresh at launch and every 30 minutes (↻ to refresh now).
 Some "articles" are only a video (e.g. `ici.radio-canada.ca/info/videos/…`). When an opened page has a
 video address, or very little text around a large video, the app switches to **video mode**: the original
 page is shown with its player isolated, centered at its proportions over the window, and everything else
-hidden. The site's own player is used (play, volume, full screen). When the video ends, the next article
+hidden. The usual player bar drives it: position and time left, play/pause, ⟲ 15 s / ⟳ 15 s, speed,
+next article (the site's own controls work too). When the video ends, the next article
 of the playlist starts. Video pages carry a "Video" badge in To Read.
 
 ## History

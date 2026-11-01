@@ -23,11 +23,7 @@ struct ContentView: View {
                 }
             }
             if model.phase == .ready {
-                if model.isVideo {
-                    VideoBar(model: model)
-                } else {
-                    PlayerBar(model: model, speech: model.speech)
-                }
+                PlayerBar(model: model, speech: model.speech)
             }
         }
         .overlay(alignment: .top) {
@@ -396,31 +392,6 @@ private struct ArticleRow: View {
     }
 }
 
-/// Bottom bar for a video page: the site's own player does the rest.
-private struct VideoBar: View {
-    let model: BrowserModel
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "play.rectangle.fill").font(.title2).foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.articleTitle).font(.headline).lineLimit(1)
-                Text(model.siteName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-            Spacer()
-            Button { model.closeArticle() } label: { Label("Next Article", systemImage: "forward.end.fill") }
-                .disabled(model.playlist.items.isEmpty)
-                .help("Next article in the playlist")
-            Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
-                .help("Open the original page in the browser")
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
-    }
-}
-
 /// Bottom bar: progress by paragraph, playback controls, and reading options.
 private struct PlayerBar: View {
     let model: BrowserModel
@@ -434,6 +405,51 @@ private struct PlayerBar: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            if model.isVideo {
+                videoProgress
+            } else {
+                paragraphProgress
+            }
+            controls
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+        .onChange(of: speech.speed) { model.applyVideoSpeed() }
+    }
+
+    /// Video: elapsed time, position, time left.
+    private var videoProgress: some View {
+        let shownTime = scrub ?? model.videoTime
+        return HStack(spacing: 10) {
+            Text(verbatim: Self.clock(shownTime)).frame(width: 70, alignment: .leading)
+            Slider(value: Binding(get: { scrub ?? model.videoTime }, set: { scrub = $0 }),
+                   in: 0...max(model.videoDuration, 1)) { editing in
+                if !editing, let scrub {
+                    model.videoSeek(to: scrub)
+                    self.scrub = nil
+                }
+            }
+            .controlSize(.small)
+            .disabled(model.videoDuration <= 0)
+            Text(verbatim: model.videoDuration > 0 ? "−" + Self.clock(model.videoDuration - shownTime) : "")
+                .frame(width: 70, alignment: .trailing)
+        }
+        .font(.caption.monospacedDigit())
+        .foregroundStyle(.secondary)
+    }
+
+    private static func clock(_ seconds: Double) -> String {
+        let total = max(Int(seconds.rounded()), 0)
+        return total >= 3600 ? String(format: "%d:%02d:%02d", total / 3600, total / 60 % 60, total % 60)
+                             : String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    private var isPlaying: Bool { model.isVideo ? model.videoPlaying : speech.state == .speaking }
+
+    /// Reading: paragraph number, position, time left.
+    private var paragraphProgress: some View {
             HStack(spacing: 10) {
                 Text(verbatim: "\(shown + 1) / \(count)")
                     .frame(width: 70, alignment: .leading)
@@ -451,7 +467,9 @@ private struct PlayerBar: View {
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
+    }
 
+    private var controls: some View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.articleTitle).font(.headline).lineLimit(1)
@@ -460,16 +478,20 @@ private struct PlayerBar: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 24) {
-                    Button { model.previous() } label: { Image(systemName: "backward.fill").font(.title2) }
-                        .help("Previous paragraph (←)")
+                    Button { model.previous() } label: {
+                        Image(systemName: model.isVideo ? "gobackward.15" : "backward.fill").font(.title2)
+                    }
+                    .help(model.isVideo ? "Back 15 seconds" : "Previous paragraph (←)")
                     Button { model.togglePlayPause() } label: {
-                        Image(systemName: speech.state == .speaking ? "pause.circle.fill" : "play.circle.fill")
+                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 44))
                             .foregroundStyle(.tint)
                     }
                     .help("Play / Pause (Space)")
-                    Button { model.next() } label: { Image(systemName: "forward.fill").font(.title2) }
-                        .help("Next paragraph (→)")
+                    Button { model.next() } label: {
+                        Image(systemName: model.isVideo ? "goforward.15" : "forward.fill").font(.title2)
+                    }
+                    .help(model.isVideo ? "Forward 15 seconds" : "Next paragraph (→)")
                     Button { model.closeArticle() } label: { Image(systemName: "forward.end.fill").font(.title3) }
                         .help("Next article in the playlist")
                         .disabled(model.playlist.items.isEmpty)
@@ -503,43 +525,42 @@ private struct PlayerBar: View {
                             }
                         }
                         .pickerStyle(.inline)
-                        Picker("Pauses between sentences and paragraphs", selection: $speech.pacing) {
-                            ForEach(Pacing.allCases) { pacing in
-                                Text(pacing.label).tag(pacing)
+                        if !model.isVideo {
+                            Picker("Pauses between sentences and paragraphs", selection: $speech.pacing) {
+                                ForEach(Pacing.allCases) { pacing in
+                                    Text(pacing.label).tag(pacing)
+                                }
                             }
+                            .pickerStyle(.inline)
                         }
-                        .pickerStyle(.inline)
                     } label: {
                         Text(speedLabel(speech.speed)).font(.body.monospacedDigit().weight(.medium))
                     }
                     .help("Speed and pauses")
 
-                    Menu {
-                        VoiceChoices(speech: speech)
-                    } label: {
-                        Image(systemName: "person.wave.2")
-                    }
-                    .help("Voice: \(speech.voiceLabel)")
+                    if !model.isVideo {
+                        Menu {
+                            VoiceChoices(speech: speech)
+                        } label: {
+                            Image(systemName: "person.wave.2")
+                        }
+                        .help("Voice: \(speech.voiceLabel)")
 
-                    Menu {
-                        Button("Bigger Text") { model.zoom(by: 1) }
-                        Button("Smaller Text") { model.zoom(by: -1) }
-                        Button("Actual Size") { model.resetZoom() }
-                    } label: {
-                        Image(systemName: "textformat.size")
+                        Menu {
+                            Button("Bigger Text") { model.zoom(by: 1) }
+                            Button("Smaller Text") { model.zoom(by: -1) }
+                            Button("Actual Size") { model.resetZoom() }
+                        } label: {
+                            Image(systemName: "textformat.size")
+                        }
+                        .help("Text size")
                     }
-                    .help("Text size")
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
     }
 
     private func speedLabel(_ speed: Double) -> String {

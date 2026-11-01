@@ -24,6 +24,11 @@ final class BrowserModel: NSObject {
     private(set) var phase: Phase = .empty
     /// The open article is a video page, shown with its own player.
     private(set) var isVideo = false
+    /// The video's position, length and state, for the player bar.
+    private(set) var videoTime = 0.0
+    private(set) var videoDuration = 0.0
+    private(set) var videoPlaying = false
+    @ObservationIgnored private var videoPolling: Task<Void, Never>?
     private(set) var articleTitle = ""
     private(set) var siteName = ""
     private(set) var articleURL: URL?
@@ -54,6 +59,8 @@ final class BrowserModel: NSObject {
     override init() {
         let config = WKWebViewConfiguration()
         config.applicationNameForUserAgent = "Version/18.0 Safari/605.1.15"
+        // The player bar's ▶︎ starts videos from a script, not a click in the page.
+        config.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: config)
 
         let readerConfig = WKWebViewConfiguration()
@@ -285,6 +292,34 @@ final class BrowserModel: NSObject {
         phase = .ready
         if let articleURL { history.record(articleURL, title: articleTitle, site: siteName) }
         webView.evaluateJavaScript(VideoPage.focus, in: nil, in: .defaultClient)
+        videoTime = 0
+        videoDuration = 0
+        videoPlaying = false
+        videoPolling?.cancel()
+        videoPolling = Task { [weak self] in
+            while let self, self.isVideo, !Task.isCancelled {
+                struct State: Decodable { var t: Double; var d: Double; var p: Bool }
+                if let json = await self.webView.evaluate(VideoPage.state, in: .defaultClient),
+                   let state = try? JSONDecoder().decode(State.self, from: Data(json.utf8)) {
+                    self.videoTime = state.t
+                    self.videoDuration = state.d
+                    if state.p, !self.videoPlaying { self.applyVideoSpeed() }
+                    self.videoPlaying = state.p
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
+    func videoSeek(to seconds: Double) {
+        videoTime = seconds
+        webView.evaluateJavaScript(VideoPage.seek(to: seconds), in: nil, in: .defaultClient)
+    }
+
+    /// The reading speed also applies to videos.
+    func applyVideoSpeed() {
+        guard isVideo else { return }
+        webView.evaluateJavaScript(VideoPage.rate(speech.speed), in: nil, in: .defaultClient)
     }
 
     /// Once the article is displayed: split it into paragraphs and start reading.
@@ -329,10 +364,12 @@ final class BrowserModel: NSObject {
     }
 
     func previous() {
+        if isVideo { return webView.evaluateJavaScript(VideoPage.skip(by: -15), in: nil, in: .defaultClient) }
         speech.hasBlocks ? speech.previous() : seek(to: max(position - 1, 0))
     }
 
     func next() {
+        if isVideo { return webView.evaluateJavaScript(VideoPage.skip(by: 15), in: nil, in: .defaultClient) }
         speech.hasBlocks ? speech.next() : seek(to: position + 1)
     }
 
