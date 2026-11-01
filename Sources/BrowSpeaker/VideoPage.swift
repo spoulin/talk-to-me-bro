@@ -1,0 +1,82 @@
+import Foundation
+
+/// Video pages ("articles" that are only a video): instead of reading the few
+/// words around it, the original page is shown with its player isolated and
+/// stretched over the window. The site's own player is used as is.
+enum VideoPage {
+    /// Address segments that mark a video page, e.g. ici.radio-canada.ca/info/videos/…
+    static func looksLikeVideo(_ url: URL) -> Bool {
+        url.path().lowercased().split(separator: "/").contains { ["video", "videos", "vidéo", "vidéos", "watch"].contains($0.removingPercentEncoding ?? String($0)) }
+    }
+
+    /// Fewer words than this around a video: the page is the video.
+    static let shortArticleWords = 150
+
+    /// Shared by `detect` and `focus`: the largest video on the page (a
+    /// <video>, or an embedded player like YouTube), ignoring ad frames.
+    private static let finder = """
+    const area = e => { const r = e.getBoundingClientRect(); return r.width * r.height; };
+    const candidates = [...document.querySelectorAll("video, iframe")].filter(e => {
+      const r = e.getBoundingClientRect();
+      if (r.width < 240 || r.height < 130) return false;
+      if (e.tagName !== "IFRAME") return true;
+      return /youtube|youtu\\.be|vimeo|dailymotion|player|embed|video/i.test(e.src) && !/imasdk|doubleclick|googlesyndication/i.test(e.src);
+    }).sort((a, b) => area(b) - area(a));
+    const target = candidates[0];
+    """
+
+    /// "true" when the page has a large video.
+    static let detect = "(() => { \(finder) return String(!!target); })()"
+
+    /// Shows the player's box as large as the window allows, keeping its proportions
+    /// (black bars around it), hides the rest, and reports the end of the video.
+    static let focus = """
+    (() => {
+      \(finder)
+      if (!target) return "none";
+      // The player box: the highest ancestor that is still about the video's size (it holds the controls).
+      const base = target.getBoundingClientRect();
+      let box = target;
+      while (box.parentElement && box.parentElement !== document.body) {
+        const r = box.parentElement.getBoundingClientRect();
+        if (r.width > base.width * 1.15 || r.height > base.height * 1.4) break;
+        box = box.parentElement;
+      }
+      const boxRect = box.getBoundingClientRect();
+      const ratio = (boxRect.width / boxRect.height) || 16 / 9;
+      for (let e = target; e && e !== box; e = e.parentElement) e.classList.add("bs-video-chain");
+      for (let e = box.parentElement; e; e = e.parentElement) e.classList.add("bs-video-ancestor");
+      box.classList.add("bs-video-box");
+      const style = document.createElement("style");
+      style.textContent = `
+        html, body { overflow: hidden !important; background: #000 !important; }
+        body::before { content: ""; position: fixed; inset: 0; background: #000; z-index: 2147483646; }
+        .bs-video-ancestor > *:not(.bs-video-ancestor):not(.bs-video-box) { visibility: hidden !important; }
+        .bs-video-ancestor { transform: none !important; filter: none !important; contain: none !important;
+          will-change: auto !important; overflow: visible !important; }
+        .bs-video-box { position: fixed !important; inset: 0 !important; margin: auto !important; padding: 0 !important;
+          width: min(100vw, calc(100vh * ${ratio})) !important; height: min(100vh, calc(100vw / ${ratio})) !important;
+          max-width: none !important; max-height: none !important;
+          z-index: 2147483647 !important; background: #000 !important; }
+        .bs-video-box img { object-fit: contain !important; }
+        .bs-video-chain, .bs-video-box video, .bs-video-box iframe { width: 100% !important; height: 100% !important;
+          max-width: none !important; max-height: none !important; }
+        .bs-video-box video { object-fit: contain !important; }`;
+      document.head.appendChild(style);
+      window.scrollTo(0, 0);
+      const video = target.tagName === "VIDEO" ? target : box.querySelector("video");
+      if (video) video.addEventListener("ended", () => window.webkit.messageHandlers.video.postMessage("ended"));
+      return "ok";
+    })()
+    """
+
+    /// Play or pause the page's video (menu and keyboard shortcut).
+    static let togglePlayback = """
+    (() => {
+      const video = document.querySelector(".bs-video-box video") || document.querySelector("video");
+      if (!video) return "none";
+      video.paused ? video.play() : video.pause();
+      return "ok";
+    })()
+    """
+}

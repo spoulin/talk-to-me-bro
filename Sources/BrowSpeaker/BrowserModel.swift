@@ -22,6 +22,8 @@ final class BrowserModel: NSObject {
     let history = History.shared
 
     private(set) var phase: Phase = .empty
+    /// The open article is a video page, shown with its own player.
+    private(set) var isVideo = false
     private(set) var articleTitle = ""
     private(set) var siteName = ""
     private(set) var articleURL: URL?
@@ -65,6 +67,7 @@ final class BrowserModel: NSObject {
         super.init()
 
         controller.add(WeakScriptHandler(self), contentWorld: Self.readerWorld, name: "reader")
+        webView.configuration.userContentController.add(WeakScriptHandler(self), contentWorld: .defaultClient, name: "video")
         webView.navigationDelegate = self
         readerView.navigationDelegate = self
         observation = webView.observe(\.estimatedProgress) { [weak self] wv, _ in
@@ -138,6 +141,10 @@ final class BrowserModel: NSObject {
         speech.stop()
         pendingPage = nil
         webView.stopLoading()
+        if isVideo {
+            webView.loadHTMLString("", baseURL: nil)
+            isVideo = false
+        }
         if !playNextInPlaylist() { phase = .empty }
     }
 
@@ -185,6 +192,7 @@ final class BrowserModel: NSObject {
 
     private func start(_ page: URL) {
         speech.stop()
+        isVideo = false
         errorMessage = nil
         pendingPage = page
         loadingHost = page.isFileURL ? page.lastPathComponent : (page.host() ?? page.absoluteString)
@@ -239,6 +247,10 @@ final class BrowserModel: NSObject {
               let article = try? JSONDecoder().decode(Article.self, from: Data(json.utf8))
         else { return fail(String(localized: "Couldn’t extract the content of this page.")) }
         guard pendingPage == page else { return }
+        if await isVideoPage(words: article.words ?? 0) {
+            guard pendingPage == page else { return }
+            return showVideo(article)
+        }
         pendingPage = nil
         articleURL = webView.url ?? page
         articleTitle = article.title
@@ -247,6 +259,32 @@ final class BrowserModel: NSObject {
         readerView.loadHTMLString(ReaderPage.html(for: article, fontSize: readerFontSize), baseURL: articleURL)
         // The page itself is no longer needed: stop its scripts and media.
         webView.loadHTMLString("", baseURL: nil)
+    }
+
+    /// A video address, or very few words, with a large video on the page.
+    /// Players are often added by scripts after the page loads: wait for them a little.
+    private func isVideoPage(words: Int) async -> Bool {
+        let byAddress = webView.url.map(VideoPage.looksLikeVideo) ?? false
+        guard byAddress || words < VideoPage.shortArticleWords else { return false }
+        for _ in 0..<(byAddress ? 16 : 6) {
+            if await webView.evaluate(VideoPage.detect, in: .defaultClient) == "true" { return true }
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        return false
+    }
+
+    /// Video mode: the page stays, with its player isolated over the window.
+    private func showVideo(_ article: Article) {
+        pendingPage = nil
+        articleURL = webView.url
+        articleTitle = article.title
+        siteName = article.siteName
+        blocks = []
+        blockLengths = []
+        isVideo = true
+        phase = .ready
+        if let articleURL { history.record(articleURL, title: articleTitle, site: siteName) }
+        webView.evaluateJavaScript(VideoPage.focus, in: nil, in: .defaultClient)
     }
 
     /// Once the article is displayed: split it into paragraphs and start reading.
@@ -276,6 +314,7 @@ final class BrowserModel: NSObject {
     // MARK: Playback
 
     func togglePlayPause() {
+        if isVideo { return webView.evaluateJavaScript(VideoPage.togglePlayback, in: nil, in: .defaultClient) }
         switch speech.state {
         case .speaking: speech.pause()
         case .paused: speech.resume()
@@ -342,6 +381,7 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard !isVideo else { return }
         if webView === self.webView, pendingPage != nil {
             Task {
                 // Give script-rendered pages a moment to fill in their content.
@@ -360,6 +400,11 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        // The video of a video page ended: on to the next article of the playlist.
+        if message.name == "video" {
+            if isVideo, message.body as? String == "ended" { playNextInPlaylist() }
+            return
+        }
         guard let body = message.body as? [String: Any] else { return }
         switch body["type"] as? String {
         case "toggle": togglePlayPause()

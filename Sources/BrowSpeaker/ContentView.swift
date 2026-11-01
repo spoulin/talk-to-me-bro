@@ -10,7 +10,8 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                BrowserSurface(model: model, showsArticle: model.phase == .ready)
+                BrowserSurface(model: model, showsArticle: model.phase == .ready && !model.isVideo,
+                               showsVideo: model.phase == .ready && model.isVideo)
                 if model.phase != .ready {
                     WelcomeView(model: model)
                 }
@@ -22,7 +23,11 @@ struct ContentView: View {
                 }
             }
             if model.phase == .ready {
-                PlayerBar(model: model, speech: model.speech)
+                if model.isVideo {
+                    VideoBar(model: model)
+                } else {
+                    PlayerBar(model: model, speech: model.speech)
+                }
             }
         }
         .overlay(alignment: .top) {
@@ -297,6 +302,15 @@ private struct ArticleCard: View {
                 .frame(height: imageHeight)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .bottomLeading) {
+                    if VideoPage.looksLikeVideo(item.url) {
+                        Label("Video", systemImage: "play.rectangle.fill")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(.thinMaterial, in: Capsule())
+                            .padding(8)
+                    }
+                }
                 .overlay(alignment: .topLeading) {
                     if isRead {
                         Label("Read", systemImage: "checkmark")
@@ -379,6 +393,31 @@ private struct ArticleRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Bottom bar for a video page: the site's own player does the rest.
+private struct VideoBar: View {
+    let model: BrowserModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "play.rectangle.fill").font(.title2).foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.articleTitle).font(.headline).lineLimit(1)
+                Text(model.siteName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            Button { model.closeArticle() } label: { Label("Next Article", systemImage: "forward.end.fill") }
+                .disabled(model.playlist.items.isEmpty)
+                .help("Next article in the playlist")
+            Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
+                .help("Open the original page in the browser")
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
     }
 }
 
@@ -662,6 +701,7 @@ private struct VoiceChoices: View {
 private struct BrowserSurface: NSViewRepresentable {
     let model: BrowserModel
     let showsArticle: Bool
+    let showsVideo: Bool
 
     func makeNSView(context: Context) -> NSView {
         let container = NSView()
@@ -680,8 +720,18 @@ private struct BrowserSurface: NSViewRepresentable {
     }
 
     func updateNSView(_ container: NSView, context: Context) {
+        if showsVideo, context.coordinator.focusedVideo == false {
+            container.window?.makeFirstResponder(model.webView)
+        }
+        context.coordinator.focusedVideo = showsVideo
         guard model.readerView.isHidden == showsArticle else { return }
         model.readerView.isHidden = !showsArticle
         if showsArticle { container.window?.makeFirstResponder(model.readerView) }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var focusedVideo = false
     }
 }

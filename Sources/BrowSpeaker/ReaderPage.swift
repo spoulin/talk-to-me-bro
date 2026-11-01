@@ -6,6 +6,7 @@ struct Article: Decodable {
     var siteName: String
     var content: String
     var lang: String
+    var words: Int?
 }
 
 /// The "Just Read"-style page: article extraction on the live page with
@@ -26,7 +27,8 @@ enum ReaderPage {
             return JSON.stringify({
               title: a.title || document.title, byline: a.byline || "",
               siteName: a.siteName || location.hostname, content: a.content,
-              lang: a.lang || document.documentElement.lang || ""
+              lang: a.lang || document.documentElement.lang || "",
+              words: a.textContent.trim().split(/\\s+/).length
             });
           }
         } catch (e) {}

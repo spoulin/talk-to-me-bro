@@ -65,6 +65,14 @@ grisés et marqués « Lu » ; un article présent dans plusieurs sources n'appa
 mettre les non lus en file. Les sources s'actualisent au lancement et toutes les 30 minutes (↻ pour
 actualiser).
 
+## Pages vidéo
+
+Certains « articles » ne sont qu'une vidéo (ex. : `ici.radio-canada.ca/info/videos/…`). Quand une page a
+une adresse de vidéo, ou très peu de texte autour d'une grande vidéo, l'app passe en **mode vidéo** : la
+page d'origine est affichée avec son lecteur isolé, centré à ses proportions dans la fenêtre, et le reste
+masqué. On utilise le lecteur du site (lecture, volume, plein écran). À la fin de la vidéo, l'article
+suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
+
 ## Historique
 
 Le bouton historique (🕘) de la barre d'outils liste les 50 derniers articles lus ; un clic relit
