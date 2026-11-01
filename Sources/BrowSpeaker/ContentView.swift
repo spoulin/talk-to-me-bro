@@ -37,6 +37,15 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                // The player's options live here, so the player bar only holds playback.
+                if model.phase == .ready {
+                    PlaylistButton(model: model)
+                    SpeedMenu(model: model, speech: model.speech)
+                    if !model.isVideo {
+                        VoiceMenu(speech: model.speech)
+                        TextSizeMenu(model: model)
+                    }
+                }
                 Button { showsHistory.toggle() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
                     .help("Recently read articles")
                     .popover(isPresented: $showsHistory, arrowEdge: .bottom) {
@@ -500,13 +509,12 @@ private struct ArticleRow: View {
     }
 }
 
-/// Bottom bar: progress by paragraph, playback controls, and reading options.
+/// Bottom bar: progress, playback controls, and what plays next.
 private struct PlayerBar: View {
     let model: BrowserModel
     @Bindable var speech: SpeechController
     /// The paragraph under the slider while it is being dragged.
     @State private var scrub: Double?
-    @State private var showsPlaylist = false
 
     private var count: Int { model.blockLengths.count }
     private var shown: Int { min(Int((scrub ?? Double(model.position)).rounded()), max(count - 1, 0)) }
@@ -621,7 +629,7 @@ private struct PlayerBar: View {
                 .buttonStyle(.plain)
 
                 // What plays next, facing what plays now: the controls stay centered.
-                HStack(spacing: 18) {
+                Group {
                     if let next = model.playlist.items.first {
                         Button { model.nextArticle() } label: {
                             VStack(alignment: .trailing, spacing: 2) {
@@ -632,79 +640,94 @@ private struct PlayerBar: View {
                         .buttonStyle(.plain)
                         .help("Play it now")
                     }
-                    playerOptions
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
     }
 
-    /// Playlist, speed and pauses, and (reading only) voice and text size.
-    private var playerOptions: some View {
-                HStack(spacing: 16) {
-                    Button { showsPlaylist.toggle() } label: {
-                        Image(systemName: "list.bullet")
-                            .overlay(alignment: .topTrailing) {
-                                if !model.playlist.items.isEmpty {
-                                    Text(verbatim: "\(model.playlist.items.count)")
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 4)
-                                        .background(Capsule().fill(Color.accentColor))
-                                        .offset(x: 10, y: -8)
-                                }
-                            }
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Playlist")
-                    .popover(isPresented: $showsPlaylist, arrowEdge: .top) {
-                        PlaylistView(model: model).frame(width: 380, height: 420)
-                    }
+}
 
-                    Menu {
-                        Picker("Speed", selection: $speech.speed) {
-                            ForEach(SpeechController.speeds, id: \.self) { speed in
-                                Text(speedLabel(speed)).tag(speed)
-                            }
-                        }
-                        .pickerStyle(.inline)
-                        if !model.isVideo {
-                            Picker("Pauses between sentences and paragraphs", selection: $speech.pacing) {
-                                ForEach(Pacing.allCases) { pacing in
-                                    Text(pacing.label).tag(pacing)
-                                }
-                            }
-                            .pickerStyle(.inline)
-                        }
-                    } label: {
-                        Text(speedLabel(speech.speed)).font(.body.monospacedDigit().weight(.medium))
-                    }
-                    .help("Speed and pauses")
+/// The playlist, in a popover from the toolbar.
+private struct PlaylistButton: View {
+    let model: BrowserModel
+    @State private var shows = false
 
-                    if !model.isVideo {
-                        Menu {
-                            VoiceChoices(speech: speech)
-                        } label: {
-                            Image(systemName: "person.wave.2")
-                        }
-                        .help("Voice: \(speech.voiceLabel)")
+    var body: some View {
+        Button { shows.toggle() } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "list.bullet")
+                if !model.playlist.items.isEmpty {
+                    Text(verbatim: "\(model.playlist.items.count)").font(.callout.monospacedDigit().weight(.semibold))
+                }
+            }
+        }
+        .help("Playlist")
+        .popover(isPresented: $shows, arrowEdge: .bottom) {
+            PlaylistView(model: model).frame(width: 380, height: 420)
+        }
+    }
+}
 
-                        Menu {
-                            Button("Bigger Text") { model.zoom(by: 1) }
-                            Button("Smaller Text") { model.zoom(by: -1) }
-                            Button("Actual Size") { model.resetZoom() }
-                        } label: {
-                            Image(systemName: "textformat.size")
-                        }
-                        .help("Text size")
+/// Speed, and the pauses between sentences when reading.
+private struct SpeedMenu: View {
+    let model: BrowserModel
+    @Bindable var speech: SpeechController
+
+    var body: some View {
+        Menu {
+            Picker("Speed", selection: $speech.speed) {
+                ForEach(SpeechController.speeds, id: \.self) { speed in
+                    Text(Self.label(speed)).tag(speed)
+                }
+            }
+            .pickerStyle(.inline)
+            if !model.isVideo {
+                Picker("Pauses between sentences and paragraphs", selection: $speech.pacing) {
+                    ForEach(Pacing.allCases) { pacing in
+                        Text(pacing.label).tag(pacing)
                     }
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
+                .pickerStyle(.inline)
+            }
+        } label: {
+            Text(Self.label(speech.speed)).font(.body.monospacedDigit().weight(.medium))
+        }
+        .menuIndicator(.hidden)
+        .help("Speed and pauses")
     }
 
-    private func speedLabel(_ speed: Double) -> String {
+    private static func label(_ speed: Double) -> String {
         speed.formatted(.number.precision(.fractionLength(0...2))) + "×"
+    }
+}
+
+private struct VoiceMenu: View {
+    let speech: SpeechController
+
+    var body: some View {
+        Menu {
+            VoiceChoices(speech: speech)
+        } label: {
+            Label("Voice", systemImage: "person.wave.2")
+        }
+        .menuIndicator(.hidden)
+        .help("Voice: \(speech.voiceLabel)")
+    }
+}
+
+private struct TextSizeMenu: View {
+    let model: BrowserModel
+
+    var body: some View {
+        Menu {
+            Button("Bigger Text") { model.zoom(by: 1) }
+            Button("Smaller Text") { model.zoom(by: -1) }
+            Button("Actual Size") { model.resetZoom() }
+        } label: {
+            Label("Text size", systemImage: "textformat.size")
+        }
+        .menuIndicator(.hidden)
+        .help("Text size")
     }
 }
 
