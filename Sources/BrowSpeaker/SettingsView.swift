@@ -77,9 +77,9 @@ private struct PronunciationSettings: View {
             List(selection: $selection) {
                 ForEach($dictionary.entries) { $entry in
                     HStack {
-                        TextField("Word", text: $entry.word, prompt: Text(verbatim: "soccer"))
+                        TextField("Original text", text: $entry.word, prompt: Text("Original text"))
                         Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                        TextField("Read as", text: $entry.replacement, prompt: Text(verbatim: "soqueur"))
+                        TextField("Phonetic spelling", text: $entry.replacement, prompt: Text("Phonetic spelling"))
                         Button { listen(to: entry) } label: { Image(systemName: "play.circle") }
                             .buttonStyle(.borderless)
                             .help("Listen with the current voice")
