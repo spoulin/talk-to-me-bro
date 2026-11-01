@@ -305,10 +305,21 @@ private struct ToReadSection: View {
         if let hero {
             card(hero, imageHeight: 260, titleFont: .title2.weight(.bold))
         }
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200, maximum: 340), spacing: 16, alignment: .top)],
-                  alignment: .leading, spacing: 20) {
-            ForEach(items.filter { $0.id != hero?.id }) { item in
-                card(item, imageHeight: 120, titleFont: .headline)
+        // A plain grid, laid out once: a lazy grid of cards of different heights
+        // could keep re-measuring them and freeze the app.
+        let rest = items.filter { $0.id != hero?.id }
+        let columns = 3
+        Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 20) {
+            ForEach(Array(stride(from: 0, to: rest.count, by: columns)), id: \.self) { start in
+                GridRow(alignment: .top) {
+                    ForEach(rest[start..<min(start + columns, rest.count)]) { item in
+                        card(item, imageHeight: 120, titleFont: .headline)
+                    }
+                    // Keep the last row's cards the same width as the others.
+                    ForEach(0..<(columns - min(columns, rest.count - start)), id: \.self) { _ in
+                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                    }
+                }
             }
         }
     }

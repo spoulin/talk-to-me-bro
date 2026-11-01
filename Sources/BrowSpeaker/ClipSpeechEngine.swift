@@ -87,13 +87,19 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
                 let data = try await current.value
                 guard generation == self.generation else { return }
                 downloads[i] = nil
+                let segment = segments[i]
                 let player = try AVAudioPlayer(data: data)
                 player.delegate = self
                 self.player = player
-                if segments[i].isFirstInBlock { events.blockStarted(segments[i].block) }
+                if segment.isFirstInBlock {
+                    events.blockStarted(segment.block)
+                    // Starting a paragraph can restart the reading (settings changed,
+                    // click on a paragraph): this run is then over.
+                    guard generation == self.generation else { return }
+                }
                 player.play()
                 if isPaused { player.pause() }
-                trackWords(of: segments[i], in: player)
+                trackWords(of: segment, in: player)
             } catch {
                 guard generation == self.generation, !(error is CancellationError) else { return }
                 stop()
