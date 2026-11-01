@@ -281,17 +281,18 @@ private struct ToReadSection: View {
                     Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
                         .help("Refresh")
                         .disabled(feeds.isRefreshing)
+                    // Picking an order also starts listening in it, and becomes the button's order.
                     Menu {
-                        Picker("Order", selection: $oldestFirst) {
-                            Text("Newest First").tag(false)
-                            Text("Oldest First").tag(true)
+                        Button { listenToAll(items, oldestFirst: false) } label: {
+                            if oldestFirst { Text("Newest First") } else { Label("Newest First", systemImage: "checkmark") }
                         }
-                        .pickerStyle(.inline)
+                        Button { listenToAll(items, oldestFirst: true) } label: {
+                            if oldestFirst { Label("Oldest First", systemImage: "checkmark") } else { Text("Oldest First") }
+                        }
                     } label: {
                         Label("Listen to All", systemImage: "text.badge.plus")
                     } primaryAction: {
-                        let unread = items.filter { !model.hasRead($0.url) }.map(\.url)
-                        model.listenToAll(oldestFirst ? unread.reversed() : unread)
+                        listenToAll(items, oldestFirst: oldestFirst)
                     }
                     .menuStyle(.button)
                     .fixedSize()
@@ -327,6 +328,12 @@ private struct ToReadSection: View {
                 }
             }
         }
+    }
+
+    private func listenToAll(_ items: [FeedItem], oldestFirst: Bool) {
+        self.oldestFirst = oldestFirst
+        let unread = items.filter { !model.hasRead($0.url) }.map(\.url)
+        model.listenToAll(oldestFirst ? unread.reversed() : unread)
     }
 
     /// The newest unread article with a picture as a large card, then a grid.
