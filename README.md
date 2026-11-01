@@ -55,7 +55,7 @@ the time left, the playback controls, speed and pauses, voice, and text size.
 **Settings › Pronunciation**: a dictionary of words to read differently, e.g. `soccer` → `soqueur`.
 
 - Matching ignores case and only replaces whole words; the highlight stays on the original word.
-- `[pause]` (0.6 s) or `[pause 1.5]` (seconds) in "Read as" adds a silence, e.g. `—` → `[pause 0.4]`.
+- `[pause]` (0.6 s) or `[pause 1.5]` (seconds) in "Phonetic spelling" adds a silence, e.g. `—` → `[pause 0.4]`.
 - Built-in pauses: "…" and "...", and before and after parentheses and brackets. Note numbers like
   `[12]` are not read. A dictionary entry for the same characters takes precedence.
 - ▶︎ plays the word through the dictionary with the current voice.

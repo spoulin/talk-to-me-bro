@@ -57,7 +57,7 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
 
 - Sans tenir compte des majuscules, et seulement sur des mots entiers ; le surlignage reste sur le mot
   d'origine.
-- `[pause]` (0,6 s) ou `[pause 1.5]` (secondes) dans « À lire comme » ajoute un silence, par exemple
+- `[pause]` (0,6 s) ou `[pause 1.5]` (secondes) dans « Écriture phonétique » ajoute un silence, par exemple
   `—` → `[pause 0.4]`.
 - Pauses automatiques : « … » et « ... », et avant et après les parenthèses et les crochets. Les numéros
   de note comme `[12]` ne sont pas lus. Une entrée du dictionnaire pour les mêmes caractères a priorité.
