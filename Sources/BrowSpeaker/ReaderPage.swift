@@ -178,7 +178,8 @@ enum ReaderPage {
       // Player keys: space plays or pauses, ← → move by paragraph.
       document.addEventListener("keydown", e => {
         if (e.metaKey || e.ctrlKey || e.altKey) return;
-        const type = e.code === "Space" ? "toggle" : e.key === "ArrowLeft" ? "prev" : e.key === "ArrowRight" ? "next" : null;
+        const type = e.code === "Space" ? "toggle" : e.key === "ArrowLeft" ? "prev" : e.key === "ArrowRight" ? "next"
+          : e.key === "Escape" ? "close" : null;
         if (!type) return;
         e.preventDefault();
         post({ type });

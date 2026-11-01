@@ -47,7 +47,7 @@ struct ContentView: View {
                     Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
                         .help("Open the original page in the browser")
                     Button { model.closeArticle() } label: { Label("Close Article", systemImage: "xmark") }
-                        .help("Close Article")
+                        .help("Back to the home page (Esc)")
                 }
             }
         }
@@ -608,7 +608,7 @@ private struct PlayerBar: View {
                         Image(systemName: model.isVideo ? "goforward.15" : "forward.fill").font(.title2)
                     }
                     .help(model.isVideo ? "Forward 15 seconds" : "Next paragraph (→)")
-                    Button { model.closeArticle() } label: { Image(systemName: "forward.end.fill").font(.title3) }
+                    Button { model.nextArticle() } label: { Image(systemName: "forward.end.fill").font(.title3) }
                         .help("Next article in the playlist")
                         .disabled(model.playlist.items.isEmpty)
                 }

@@ -39,6 +39,7 @@ struct BrowserCommands: Commands {
                 .keyboardShortcut("o", modifiers: [.command, .shift])
                 .disabled(model?.phase != .ready)
             Button("Close Article") { model?.closeArticle() }
+                .keyboardShortcut(.escape, modifiers: [])
                 .disabled(model?.phase != .ready)
         }
 
@@ -64,7 +65,7 @@ struct BrowserCommands: Commands {
                 .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
             Button("Next Paragraph") { model?.next() }
                 .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
-            Button("Next Article") { model?.closeArticle() }
+            Button("Next Article") { model?.nextArticle() }
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(model?.playlist.items.isEmpty ?? true)
         }

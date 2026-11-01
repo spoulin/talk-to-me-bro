@@ -149,7 +149,7 @@ final class BrowserModel: NSObject {
         if let articleURL { NSWorkspace.shared.open(articleURL) }
     }
 
-    /// Closes the article; the next one in the playlist, if any, starts.
+    /// Back to the home page (✕, Escape); the playlist is left as it is.
     func closeArticle() {
         speech.stop()
         pendingPage = nil
@@ -158,7 +158,12 @@ final class BrowserModel: NSObject {
             webView.loadHTMLString("", baseURL: nil)
             isVideo = false
         }
-        if !playNextInPlaylist() { phase = .empty }
+        phase = .empty
+    }
+
+    /// The next article of the playlist (⏭), or the home page when it is empty.
+    func nextArticle() {
+        if !playNextInPlaylist() { closeArticle() }
     }
 
     /// The article was read (or the video watched) to the end: on to the next
@@ -514,11 +519,13 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
         // The video of a video page ended: on to the next article of the playlist.
         if message.name == "video" {
             if isVideo, message.body as? String == "ended" { articleFinished() }
+            if message.body as? String == "close" { closeArticle() }
             return
         }
         guard let body = message.body as? [String: Any] else { return }
         switch body["type"] as? String {
         case "toggle": togglePlayPause()
+        case "close": closeArticle()
         case "prev": previous()
         case "next": next()
         case "click":

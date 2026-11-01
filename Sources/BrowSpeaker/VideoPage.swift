@@ -67,6 +67,7 @@ enum VideoPage {
       window.scrollTo(0, 0);
       const video = target.tagName === "VIDEO" ? target : box.querySelector("video");
       if (video) video.addEventListener("ended", () => window.webkit.messageHandlers.video.postMessage("ended"));
+      document.addEventListener("keydown", e => { if (e.key === "Escape") window.webkit.messageHandlers.video.postMessage("close"); }, true);
       \(adGuard)
       return "ok";
     })()
@@ -204,6 +205,7 @@ extension VideoPage {
                 }
               });
             }
+            document.addEventListener("keydown", e => { if (e.key === "Escape") window.webkit.messageHandlers.video.postMessage("close"); });
             window.__bsVideo = {
               state: () => JSON.stringify(ready ? { t: player.getCurrentTime() || 0, d: player.getDuration() || 0,
                                                    p: player.getPlayerState() === 1 } : { t: 0, d: 0, p: false }),
