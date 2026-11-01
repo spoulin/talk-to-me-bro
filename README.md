@@ -65,7 +65,7 @@ without a date in their source get it from the article itself), as magazine
 cards (the newest one large) or as a list (⊞ / ☰). Pictures come from the feed, from the page, or from
 each article's sharing image (`og:image`). Already read articles are dimmed and marked "Read"; an article
 listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones. Tabs show *All*,
-*Articles* or *Videos* only, or the *History*.
+*Articles* or *Videos* only, the *Playlist*, or the *History*; video posts have a 🎥 mark.
 Sources refresh at launch and every 30 minutes (↻ to refresh now).
 
 ## Video pages

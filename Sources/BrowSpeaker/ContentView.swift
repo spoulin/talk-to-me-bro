@@ -160,7 +160,7 @@ private struct WelcomeView: View {
                     }
                 }
 
-                if !model.playlist.items.isEmpty {
+                if feeds.sources.isEmpty && !model.playlist.items.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text("Playlist").font(.title3.weight(.semibold))
@@ -204,7 +204,7 @@ private struct WelcomeView: View {
 /// videos) as magazine cards or a list; and the history in its own tab.
 private struct ToReadSection: View {
     enum Tab: String, CaseIterable, Identifiable {
-        case all, articles, videos, history
+        case all, articles, videos, playlist, history
         var id: Self { self }
     }
 
@@ -227,6 +227,7 @@ private struct ToReadSection: View {
         case .all: return Array(latest.prefix(24))
         case .articles: return Array(latest.filter { !Self.isVideo($0.url) }.prefix(24))
         case .videos: return Array(latest.filter { Self.isVideo($0.url) }.prefix(24))
+        case .playlist: return []
         case .history:
             // History entries as cards, with the picture of the same article in the sources when known.
             let images = Dictionary(feeds.items.compactMap { item in item.image.map { (BrowserModel.readKey(item.url), $0) } },
@@ -246,6 +247,10 @@ private struct ToReadSection: View {
                     Text("All").tag(Tab.all)
                     Text("Articles").tag(Tab.articles)
                     Text("Videos").tag(Tab.videos)
+                    Group {
+                        if model.playlist.items.isEmpty { Text("Playlist") } else { Text("Playlist (\(model.playlist.items.count))") }
+                    }
+                    .tag(Tab.playlist)
                     Text("History").tag(Tab.history)
                 }
                 .pickerStyle(.segmented)
@@ -253,14 +258,21 @@ private struct ToReadSection: View {
                 .fixedSize()
                 if feeds.isRefreshing { ProgressView().controlSize(.small) }
                 Spacer()
-                Picker("Display", selection: $style) {
-                    Image(systemName: "square.grid.2x2").help("Cards").tag("cards")
-                    Image(systemName: "list.bullet").help("List").tag("list")
+                if tab == .playlist {
+                    Button { model.playNextInPlaylist() } label: { Label("Play Playlist", systemImage: "play.fill") }
+                        .disabled(model.playlist.items.isEmpty)
+                } else {
+                    Picker("Display", selection: $style) {
+                        Image(systemName: "square.grid.2x2").help("Cards").tag("cards")
+                        Image(systemName: "list.bullet").help("List").tag("list")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                if tab == .history {
+                if tab == .playlist {
+                    EmptyView()
+                } else if tab == .history {
                     Button("Clear") { model.history.clear() }
                         .disabled(items.isEmpty)
                 } else {
@@ -276,7 +288,12 @@ private struct ToReadSection: View {
                         .help("Manage sources")
                 }
             }
-            if items.isEmpty {
+            if tab == .playlist {
+                // The playlist's own list: drag to reorder, Delete to remove, double-click to play.
+                PlaylistView(model: model)
+                    .frame(height: min(max(CGFloat(model.playlist.items.count) * 54 + 60, 140), 560))
+                    .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+            } else if items.isEmpty {
                 Text(tab == .history ? "Articles you listen to will appear here." : "No articles yet.")
                     .foregroundStyle(.secondary)
             } else if style == "cards" {
@@ -364,13 +381,14 @@ private struct ArticleCard: View {
                 .frame(height: imageHeight)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(alignment: .bottomLeading) {
+                // Video posts: a round mark at the bottom right, matching the ➕ at the top right.
+                .overlay(alignment: .bottomTrailing) {
                     if VideoPage.looksLikeVideo(item.url) || VideoPage.YouTube.videoID(in: item.url) != nil {
-                        Label("Video", systemImage: "play.rectangle.fill")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6).padding(.vertical, 3)
-                            .background(.thinMaterial, in: Capsule())
+                        Image(systemName: "video.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white, .black.opacity(0.7))
                             .padding(8)
+                            .help("Video")
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -665,7 +683,7 @@ private struct PlaylistView: View {
             .padding(.vertical, 10)
 
             if playlist.items.isEmpty {
-                Text("Share articles while one is playing to add them here.")
+                Text("Add articles with ➕, or share them while one is playing.")
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding()

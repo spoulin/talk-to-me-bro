@@ -84,7 +84,7 @@
 "Clear" = "Vider";
 "Play Now" = "Écouter maintenant";
 "Play Playlist" = "Écouter la playlist";
-"Share articles while one is playing to add them here." = "Partagez des articles pendant une lecture pour les ajouter ici.";
+"Add articles with ➕, or share them while one is playing." = "Ajoutez des articles avec ➕, ou partagez-les pendant une lecture.";
 "Next article in the playlist" = "Article suivant de la playlist";
 "Next Article" = "Article suivant";
 
@@ -161,3 +161,4 @@
 "All" = "Tout";
 "Articles" = "Articles";
 "Videos" = "Vidéos";
+"Playlist (%lld)" = "Playlist (%lld)";
