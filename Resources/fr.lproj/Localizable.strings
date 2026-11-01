@@ -162,3 +162,10 @@
 "Articles" = "Articles";
 "Videos" = "Vidéos";
 "Playlist (%lld)" = "Playlist (%lld)";
+
+/* Listen to All order */
+"Order" = "Ordre";
+"Newest First" = "Du plus récent au plus ancien";
+"Oldest First" = "Du plus ancien au plus récent";
+"Add the unread articles to the playlist, oldest first, and start listening" = "Ajouter les articles non lus à la playlist, du plus ancien au plus récent, et commencer l’écoute";
+"Add the unread articles to the playlist, newest first, and start listening" = "Ajouter les articles non lus à la playlist, du plus récent au plus ancien, et commencer l’écoute";

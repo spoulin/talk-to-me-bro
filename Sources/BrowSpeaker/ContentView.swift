@@ -212,6 +212,8 @@ private struct ToReadSection: View {
     private var feeds = Feeds.shared
     @AppStorage("toReadStyle") private var style = "cards"
     @AppStorage("homeTab") private var tab = Tab.all
+    /// "Listen to All" order: newest first (as on screen) or oldest first (chronological).
+    @AppStorage("listenOrder") private var oldestFirst = false
 
     init(model: BrowserModel) {
         self.model = model
@@ -279,11 +281,23 @@ private struct ToReadSection: View {
                     Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
                         .help("Refresh")
                         .disabled(feeds.isRefreshing)
-                    Button {
-                        model.listenToAll(items.filter { !model.hasRead($0.url) }.map(\.url))
-                    } label: { Label("Listen to All", systemImage: "text.badge.plus") }
-                        .help("Add the unread articles to the playlist and start listening")
-                        .disabled(items.allSatisfy { model.hasRead($0.url) })
+                    Menu {
+                        Picker("Order", selection: $oldestFirst) {
+                            Text("Newest First").tag(false)
+                            Text("Oldest First").tag(true)
+                        }
+                        .pickerStyle(.inline)
+                    } label: {
+                        Label("Listen to All", systemImage: "text.badge.plus")
+                    } primaryAction: {
+                        let unread = items.filter { !model.hasRead($0.url) }.map(\.url)
+                        model.listenToAll(oldestFirst ? unread.reversed() : unread)
+                    }
+                    .menuStyle(.button)
+                    .fixedSize()
+                    .help(oldestFirst ? "Add the unread articles to the playlist, oldest first, and start listening"
+                                      : "Add the unread articles to the playlist, newest first, and start listening")
+                    .disabled(items.allSatisfy { model.hasRead($0.url) })
                     SettingsLink { Image(systemName: "gearshape") }
                         .help("Manage sources")
                 }
@@ -381,6 +395,8 @@ private struct ArticleCard: View {
                 .frame(height: imageHeight)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .saturation(isRead ? 0.15 : 1)
+                .opacity(isRead ? 0.4 : 1)
                 // Video posts: a round mark at the bottom right, matching the ➕ at the top right.
                 .overlay(alignment: .bottomTrailing) {
                     if VideoPage.looksLikeVideo(item.url) || VideoPage.YouTube.videoID(in: item.url) != nil {
@@ -414,7 +430,7 @@ private struct ArticleCard: View {
                 .foregroundStyle(isRead ? .secondary : .primary)
             Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .opacity(isRead ? 0.65 : 1)
+        .opacity(isRead ? 0.85 : 1)
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
         .onHover { isHovered = $0 }
