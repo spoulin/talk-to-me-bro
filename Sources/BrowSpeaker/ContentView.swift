@@ -578,7 +578,7 @@ private struct PlayerBar: View {
     }
 
     private var controls: some View {
-            HStack {
+            HStack(spacing: 48) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.articleTitle).font(.headline).lineLimit(1)
                     HStack(spacing: 6) {
@@ -620,6 +620,26 @@ private struct PlayerBar: View {
                 }
                 .buttonStyle(.plain)
 
+                // What plays next, facing what plays now: the controls stay centered.
+                HStack(spacing: 18) {
+                    if let next = model.playlist.items.first {
+                        Button { model.nextArticle() } label: {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(next.displayTitle).font(.subheadline.weight(.medium)).lineLimit(1)
+                                Text("Up Next · \(next.displaySite)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help("Play it now")
+                    }
+                    playerOptions
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+    }
+
+    /// Playlist, speed and pauses, and (reading only) voice and text size.
+    private var playerOptions: some View {
                 HStack(spacing: 16) {
                     Button { showsPlaylist.toggle() } label: {
                         Image(systemName: "list.bullet")
@@ -681,8 +701,6 @@ private struct PlayerBar: View {
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .fixedSize()
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
     }
 
     private func speedLabel(_ speed: Double) -> String {

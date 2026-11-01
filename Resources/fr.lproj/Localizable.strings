@@ -81,6 +81,8 @@
 "Already in the playlist" = "Déjà dans la playlist";
 "Playlist" = "Playlist";
 "Up Next" = "À suivre";
+"Up Next · %@" = "À suivre · %@";
+"Play it now" = "Le lancer maintenant";
 "Clear" = "Vider";
 "Play Now" = "Écouter maintenant";
 "Play Playlist" = "Écouter la playlist";
