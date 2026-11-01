@@ -162,10 +162,21 @@ enum ReaderPage {
         setFontSize(px) { document.documentElement.style.setProperty("--font-size", px + "px"); }
       };
 
+      const post = message => window.webkit.messageHandlers.reader.postMessage(message);
+
       document.addEventListener("click", e => {
         if (e.target.closest("a")) return;
         const index = get().findIndex(el => el.contains(e.target));
-        if (index >= 0) window.webkit.messageHandlers.reader.postMessage({ index, alt: e.altKey });
+        if (index >= 0) post({ type: "click", index, alt: e.altKey });
+      });
+
+      // Player keys: space plays or pauses, ← → move by paragraph.
+      document.addEventListener("keydown", e => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const type = e.code === "Space" ? "toggle" : e.key === "ArrowLeft" ? "prev" : e.key === "ArrowRight" ? "next" : null;
+        if (!type) return;
+        e.preventDefault();
+        post({ type });
       });
     })();
     """

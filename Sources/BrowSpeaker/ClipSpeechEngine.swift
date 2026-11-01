@@ -3,7 +3,8 @@ import Foundation
 
 /// Turns one paragraph into an audio file (WAV, MP3…).
 protocol ClipSynthesizer {
-    func synthesize(_ text: String, voice: String, speed: Double) async throws -> Data
+    /// `sentencePause`: seconds of silence the service should leave between sentences, if it can.
+    func synthesize(_ text: String, voice: String, speed: Double, sentencePause: Double) async throws -> Data
 }
 
 /// Engine for voices that produce audio clips (Piper, or a cloud service): each paragraph
@@ -24,17 +25,21 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
     private var blocks: [String] = []
     private var voiceID = ""
     private var speed = 1.0
+    private var pacing = Pacing.medium
     private var index = 0
     private var isPaused = false
+    /// The next paragraph, when pause was pressed during the silence before it.
+    private var pendingNext: (() -> Void)?
     private var player: AVAudioPlayer?
     private var downloads: [Int: Task<Data, Error>] = [:]
     private var wordTimer: Timer?
 
-    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double) {
+    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double, pacing: Pacing) {
         stop()
         self.blocks = blocks
         self.voiceID = voiceID ?? ""
         self.speed = speed
+        self.pacing = pacing
         play(index, generation: generation)
     }
 
@@ -45,7 +50,12 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
 
     func resume() {
         isPaused = false
-        player?.play()
+        if let pendingNext {
+            self.pendingNext = nil
+            pendingNext()
+        } else {
+            player?.play()
+        }
     }
 
     func stop() {
@@ -57,13 +67,14 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
         player?.stop()
         player = nil
         isPaused = false
+        pendingNext = nil
     }
 
     private func audio(for i: Int) -> Task<Data, Error> {
         if let task = downloads[i] { return task }
-        let text = blocks[i], voice = voiceID, speed = speed
+        let text = blocks[i], voice = voiceID, speed = speed, sentencePause = pacing.sentence
         let synthesizer = synthesizer
-        let task = Task { try await synthesizer.synthesize(text, voice: voice, speed: speed) }
+        let task = Task { try await synthesizer.synthesize(text, voice: voice, speed: speed, sentencePause: sentencePause) }
         downloads[i] = task
         return task
     }
@@ -128,7 +139,16 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
         guard let player, ObjectIdentifier(player) == id else { return }
         self.player = nil
         wordTimer?.invalidate()
-        play(index + 1, generation: generation)
+        let generation = generation, next = index + 1
+        Task {
+            try? await Task.sleep(for: .seconds(pacing.paragraph))
+            guard generation == self.generation else { return }
+            if isPaused {
+                pendingNext = { [weak self] in self?.play(next, generation: generation) }
+            } else {
+                play(next, generation: generation)
+            }
+        }
     }
 }
 

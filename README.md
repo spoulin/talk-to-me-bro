@@ -1,8 +1,7 @@
 # Talk to me Bro
 
-Navigateur macOS minimaliste avec un **mode lecture** (façon « Just Read ») et la
-**lecture à voix haute** avec la voix choisie dans
-*Réglages Système › Accessibilité › Lire et énoncer* (« Read & Speak », anciennement « Contenu énoncé »).
+Lecteur d'articles pour macOS : on lui envoie un article depuis son navigateur, il l'affiche sans pub ni
+mise en page (façon « Just Read ») et le **lit à voix haute**, avec la voix de macOS ou une voix Piper locale.
 
 ## Construire
 
@@ -15,22 +14,27 @@ Prérequis : macOS 14+, Xcode / Swift 6. Pour l'installer, copier `build/Talk to
 
 ## Utilisation
 
+Pour ouvrir un article :
+- dans le navigateur, **Partager › Lire avec Talk to me Bro** ;
+- ou glisser un lien dans la fenêtre ;
+- ou copier un lien, puis ⇧⌘V.
+
+La lecture démarre toute seule. La barre du bas montre la progression (cliquer ou glisser pour sauter
+à un paragraphe), le temps restant, les commandes, la vitesse et les pauses, la voix et la taille du texte.
+
 | Action | Raccourci |
 | --- | --- |
-| Mode lecture (article seul, sans pub ni mise en page) | ⇧⌘R ou bouton 📄 |
-| Lire à voix haute / Pause | ⌥⌘P ou ▶︎ |
-| Paragraphe précédent / suivant | ⌥⌘← / ⌥⌘→ |
+| Lire / Pause | espace (dans l'article) ou ⌥⌘P |
+| Paragraphe précédent / suivant | ← / → (dans l'article) ou ⌥⌘← / ⌥⌘→ |
 | Arrêter | ⌥⌘. |
+| Écouter le lien copié | ⇧⌘V |
+| Ouvrir la page d'origine dans le navigateur | ⇧⌘O |
 | Taille du texte | ⌘+ / ⌘- / ⌘0 |
-| Barre d'adresse | ⌘L |
 
-- ▶︎ sur une page normale passe automatiquement en mode lecture et commence à lire.
-- En mode lecture, la lecture commence au premier paragraphe visible à l'écran.
 - Pendant la lecture, cliquer un paragraphe y saute ; ⌥-clic démarre la lecture à ce paragraphe.
-- Le paragraphe lu et le mot prononcé sont surlignés, et la page défile toute seule.
-- Le menu « Aa » règle la vitesse (multiplicateur de la vitesse système) et la voix : « Voix du système »
-  (par défaut) suit le réglage système, ou on choisit une voix installée. Les voix sont classées par
-  qualité (Premium › Améliorée › Standard), d'abord celles de la langue du système, puis « Autres langues ».
+- Les liens de l'article s'ouvrent dans le navigateur habituel.
+- **Pauses** (menu de la vitesse) : Aucune, Courtes, Moyennes (par défaut) ou Longues, après chaque
+  paragraphe et, plus courtes, après chaque phrase, pour un débit moins monotone.
 
 ## Choix des voix
 

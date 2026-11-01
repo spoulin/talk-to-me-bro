@@ -7,27 +7,45 @@ import AVFoundation
 final class SystemSpeechEngine: NSObject, SpeechEngine {
     var events = SpeechEngineEvents()
 
+    /// One utterance per sentence, so pauses can follow sentences and paragraphs.
+    private struct Piece {
+        let block: Int
+        /// Where the sentence starts in its paragraph, to report word ranges in paragraph terms.
+        let offset: Int
+        let isFirstInBlock: Bool
+        let isLast: Bool
+    }
+
     private var synth: AVSpeechSynthesizer?
-    private var indices: [ObjectIdentifier: Int] = [:]
-    private var lastIndex = 0
+    private var pieces: [ObjectIdentifier: Piece] = [:]
 
     /// A fresh synthesizer is used each time: enqueuing right after
     /// `stopSpeaking` on the same instance can drop utterances.
-    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double) {
+    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double, pacing: Pacing) {
         stop()
         let voice = voiceID.flatMap(AVSpeechSynthesisVoice.init(identifier:)) ?? Self.systemVoice()
         let rate = Self.utteranceRate(speed: speed)
         let synth = AVSpeechSynthesizer()
         synth.delegate = self
         self.synth = synth
-        lastIndex = blocks.count - 1
         for i in index..<blocks.count {
-            let utterance = AVSpeechUtterance(string: blocks[i])
-            utterance.voice = voice
-            utterance.rate = rate
-            utterance.postUtteranceDelay = 0.12
-            indices[ObjectIdentifier(utterance)] = i
-            synth.speak(utterance)
+            let text = blocks[i] as NSString
+            var sentences: [NSRange] = []
+            text.enumerateSubstrings(in: NSRange(location: 0, length: text.length),
+                                     options: [.bySentences, .substringNotRequired]) { _, range, _, _ in
+                sentences.append(range)
+            }
+            if sentences.isEmpty { sentences = [NSRange(location: 0, length: text.length)] }
+            for (j, range) in sentences.enumerated() {
+                let isLastInBlock = j == sentences.count - 1
+                let utterance = AVSpeechUtterance(string: text.substring(with: range))
+                utterance.voice = voice
+                utterance.rate = rate
+                utterance.postUtteranceDelay = isLastInBlock ? pacing.paragraph : pacing.sentence
+                pieces[ObjectIdentifier(utterance)] = Piece(block: i, offset: range.location, isFirstInBlock: j == 0,
+                                                            isLast: isLastInBlock && i == blocks.count - 1)
+                synth.speak(utterance)
+            }
         }
     }
 
@@ -35,7 +53,7 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
     func resume() { synth?.continueSpeaking() }
 
     func stop() {
-        indices.removeAll()
+        pieces.removeAll()
         synth?.delegate = nil
         synth?.stopSpeaking(at: .immediate)
         synth = nil
@@ -43,25 +61,25 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
 
     // MARK: Delegate events (already hopped to the main actor)
 
-    private func index(for utterance: ObjectIdentifier, from synthID: ObjectIdentifier) -> Int? {
+    private func piece(for utterance: ObjectIdentifier, from synthID: ObjectIdentifier) -> Piece? {
         guard let synth, ObjectIdentifier(synth) == synthID else { return nil }
-        return indices[utterance]
+        return pieces[utterance]
     }
 
     fileprivate func utteranceStarted(_ id: ObjectIdentifier, synth: ObjectIdentifier) {
-        guard let i = index(for: id, from: synth) else { return }
-        events.blockStarted(i)
+        guard let piece = piece(for: id, from: synth), piece.isFirstInBlock else { return }
+        events.blockStarted(piece.block)
     }
 
     fileprivate func utteranceFinished(_ id: ObjectIdentifier, synth: ObjectIdentifier) {
-        guard let i = index(for: id, from: synth), i == lastIndex else { return }
+        guard let piece = piece(for: id, from: synth), piece.isLast else { return }
         stop()
         events.finished()
     }
 
     fileprivate func willSpeak(_ range: NSRange, in id: ObjectIdentifier, synth: ObjectIdentifier) {
-        guard let i = index(for: id, from: synth) else { return }
-        events.willSpeak(i, range)
+        guard let piece = piece(for: id, from: synth) else { return }
+        events.willSpeak(piece.block, NSRange(location: range.location + piece.offset, length: range.length))
     }
 
     // MARK: System voice

@@ -7,10 +7,47 @@ import Observation
 protocol SpeechEngine: AnyObject {
     var events: SpeechEngineEvents { get set }
     /// Speaks `blocks[index...]` in order. `voiceID` is engine-specific; nil means its default voice.
-    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double)
+    func start(_ blocks: [String], at index: Int, voiceID: String?, speed: Double, pacing: Pacing)
     func pause()
     func resume()
     func stop()
+}
+
+/// Silences between paragraphs and sentences: a steady flow with no breaks
+/// quickly becomes tiring to listen to.
+enum Pacing: String, CaseIterable, Identifiable {
+    case none, short, medium, long
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .none: "Aucune"
+        case .short: "Courtes"
+        case .medium: "Moyennes"
+        case .long: "Longues"
+        }
+    }
+
+    /// Seconds after each paragraph.
+    var paragraph: Double {
+        switch self {
+        case .none: 0.12
+        case .short: 0.5
+        case .medium: 1.0
+        case .long: 1.8
+        }
+    }
+
+    /// Seconds after each sentence within a paragraph.
+    var sentence: Double {
+        switch self {
+        case .none: 0
+        case .short: 0.15
+        case .medium: 0.35
+        case .long: 0.6
+        }
+    }
 }
 
 struct SpeechEngineEvents {
@@ -36,6 +73,13 @@ final class SpeechController {
     var speed: Double = UserDefaults.standard.object(forKey: "speechSpeed") as? Double ?? 1 {
         didSet {
             UserDefaults.standard.set(speed, forKey: "speechSpeed")
+            restartIfSpeaking()
+        }
+    }
+
+    var pacing: Pacing = Pacing(rawValue: UserDefaults.standard.string(forKey: "pacing") ?? "") ?? .medium {
+        didSet {
+            UserDefaults.standard.set(pacing.rawValue, forKey: "pacing")
             restartIfSpeaking()
         }
     }
@@ -102,7 +146,7 @@ final class SpeechController {
         self.engine = engine
         currentIndex = index
         state = .speaking
-        engine.start(blocks, at: index, voiceID: voiceID, speed: speed)
+        engine.start(blocks, at: index, voiceID: voiceID, speed: speed, pacing: pacing)
     }
 
     func pause() {
@@ -152,7 +196,7 @@ final class SpeechController {
         let index = currentIndex ?? 0
         engine = systemEngine
         state = .speaking
-        systemEngine.start(blocks, at: index, voiceID: nil, speed: speed)
+        systemEngine.start(blocks, at: index, voiceID: nil, speed: speed, pacing: pacing)
     }
 
     private func restartIfSpeaking() {
