@@ -27,6 +27,8 @@ struct FeedItem: Codable, Identifiable, Hashable {
     let date: Date?
     let sourceID: UUID
     let sourceTitle: String
+    /// A picture for the magazine view: from the feed, the page, or the article's sharing image.
+    var image: URL?
 }
 
 /// Sites and feeds the user follows, and their latest articles. Accepts a feed
@@ -56,15 +58,27 @@ final class Feeds {
     }
 
     /// Newest first; page links (no date) keep their page order after dated items.
+    /// An article listed by several sources appears once, with the best details.
     var latest: [FeedItem] {
-        items.enumerated().sorted { a, b in
-            switch (a.element.date, b.element.date) {
-            case let (x?, y?): x > y
-            case (.some, nil): true
-            case (nil, .some): false
-            case (nil, nil): a.offset < b.offset
+        var best: [URL: FeedItem] = [:]
+        for item in items {
+            guard var kept = best[item.url] else { best[item.url] = item; continue }
+            if kept.date == nil, item.date != nil { kept = item }
+            if kept.image == nil { kept.image = item.image }
+            best[item.url] = kept
+        }
+        var seen = Set<URL>()
+        return items.enumerated().filter { seen.insert($0.element.url).inserted }
+            .compactMap { pair in best[pair.element.url].map { (pair.offset, $0) } }
+            .sorted { a, b in
+                switch (a.1.date, b.1.date) {
+                case let (x?, y?): x > y
+                case (.some, nil): true
+                case (nil, .some): false
+                case (nil, nil): a.0 < b.0
+                }
             }
-        }.map(\.element)
+            .map(\.1)
     }
 
     // MARK: Sources
@@ -111,25 +125,38 @@ final class Feeds {
     }
 
     private func refresh(_ source: FeedSource) async {
-        var fetched: [(url: URL, title: String, date: Date?)] = []
+        var fetched: [(url: URL, title: String, date: Date?, image: URL?)] = []
         var error: String?
         switch source.mode {
         case .feed:
             if let data = await Self.fetch(source.url), let feed = FeedParser.parse(data) {
-                fetched = feed.items.map { ($0.url, $0.title, $0.date) }
+                fetched = feed.items.map { ($0.url, $0.title, $0.date, $0.image) }
             } else {
                 error = String(localized: "The feed could not be read.")
             }
         case .page:
-            fetched = await PageLinks.extract(from: source.url).map { ($0.url, $0.title, nil) }
+            fetched = await PageLinks.extract(from: source.url).map { ($0.url, $0.title, nil, $0.image) }
             if fetched.isEmpty { error = String(localized: "No article links found on the page.") }
         }
         guard let index = sources.firstIndex(where: { $0.id == source.id }) else { return }
         sources[index].lastError = error
         guard !fetched.isEmpty else { return }
-        let fresh = fetched.prefix(Self.itemsPerSource).map {
-            FeedItem(url: $0.url, title: $0.title, date: $0.date, sourceID: source.id, sourceTitle: sources[index].title)
+        let known = Dictionary(items.compactMap { item in item.image.map { (item.url, $0) } }, uniquingKeysWith: { a, _ in a })
+        var fresh = fetched.prefix(Self.itemsPerSource).map {
+            FeedItem(url: $0.url, title: $0.title, date: $0.date, sourceID: source.id, sourceTitle: sources[index].title,
+                     image: $0.image ?? known[$0.url])
         }
+        items = items.filter { $0.sourceID != source.id } + fresh
+        // Articles without a picture: use their sharing image (og:image), fetched in the background.
+        let missing = fresh.filter { $0.image == nil }.map(\.url)
+        guard !missing.isEmpty else { return }
+        let found = await withTaskGroup(of: (URL, URL?).self) { group in
+            for url in missing { group.addTask { (url, await Self.sharingImage(of: url)) } }
+            var found: [URL: URL] = [:]
+            for await (url, image) in group { found[url] = image }
+            return found
+        }
+        for i in fresh.indices where fresh[i].image == nil { fresh[i].image = found[fresh[i].url] }
         items = items.filter { $0.sourceID != source.id } + fresh
     }
 
@@ -186,6 +213,24 @@ final class Feeds {
         }
     }
 
+    /// The image a page shows when it is shared (og:image, twitter:image).
+    nonisolated static func sharingImage(of page: URL) async -> URL? {
+        guard let data = await fetch(page) else { return nil }
+        let html = String(decoding: data.prefix(300_000), as: UTF8.self)
+        for property in ["og:image", "twitter:image"] {
+            for pattern in ["<meta[^>]+(?:property|name)=[\"']\(property)[\"'][^>]*content=[\"']([^\"']+)[\"']",
+                            "<meta[^>]+content=[\"']([^\"']+)[\"'][^>]*(?:property|name)=[\"']\(property)[\"']"] {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+                   let result = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+                   let range = Range(result.range(at: 1), in: html),
+                   let url = URL(string: html[range].replacingOccurrences(of: "&amp;", with: "&"), relativeTo: page)?.absoluteURL {
+                    return url
+                }
+            }
+        }
+        return nil
+    }
+
     private static func matchTitle(in html: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: "<title[^>]*>([^<]+)</title>", options: .caseInsensitive),
               let result = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
@@ -194,13 +239,13 @@ final class Feeds {
         return html[range].trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    static func fetch(_ url: URL) async -> Data? {
+    nonisolated static func fetch(_ url: URL) async -> Data? {
         await fetchFollowingRedirects(url)?.data
     }
 
     /// The page and the address it was finally served from, to resolve
     /// relative links and feed addresses against the right site.
-    static func fetchFollowingRedirects(_ url: URL) async -> (data: Data, url: URL)? {
+    nonisolated static func fetchFollowingRedirects(_ url: URL) async -> (data: Data, url: URL)? {
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
                          forHTTPHeaderField: "User-Agent")
@@ -225,7 +270,7 @@ final class Feeds {
 final class FeedParser: NSObject, XMLParserDelegate {
     struct Feed {
         var title: String?
-        var items: [(url: URL, title: String, date: Date?)] = []
+        var items: [(url: URL, title: String, date: Date?, image: URL?)] = []
     }
 
     static func parse(_ data: Data) -> Feed? {
@@ -240,7 +285,7 @@ final class FeedParser: NSObject, XMLParserDelegate {
     private var isFeed = false
     private var inItem = false
     private var text = ""
-    private var itemTitle = "", itemLink = "", itemDate = ""
+    private var itemTitle = "", itemLink = "", itemDate = "", itemImage = "", itemHTML = ""
 
     func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?,
                 qualifiedName: String?, attributes: [String: String] = [:]) {
@@ -248,7 +293,20 @@ final class FeedParser: NSObject, XMLParserDelegate {
         if ["rss", "feed", "rdf:rdf", "rdf"].contains(name) { isFeed = true }
         if name == "item" || name == "entry" {
             inItem = true
-            itemTitle = ""; itemLink = ""; itemDate = ""
+            itemTitle = ""; itemLink = ""; itemDate = ""; itemImage = ""; itemHTML = ""
+        }
+        // Pictures: <enclosure type="image/…">, <media:content>, <media:thumbnail>, <itunes:image>
+        if inItem, itemImage.isEmpty {
+            let type = attributes["type"] ?? ""
+            switch name {
+            case "enclosure" where type.hasPrefix("image"), "media:thumbnail":
+                itemImage = attributes["url"] ?? ""
+            case "media:content" where type.hasPrefix("image") || attributes["medium"] == "image":
+                itemImage = attributes["url"] ?? ""
+            case "itunes:image":
+                itemImage = attributes["href"] ?? ""
+            default: break
+            }
         }
         // Atom: <link rel="alternate" href="…"/>
         if inItem, name == "link", let href = attributes["href"], (attributes["rel"] ?? "alternate") == "alternate" {
@@ -268,11 +326,13 @@ final class FeedParser: NSObject, XMLParserDelegate {
             case "title": itemTitle = value
             case "link" where !value.isEmpty: itemLink = value
             case "pubdate": itemDate = value
+            case "description", "content:encoded", "content", "summary": itemHTML += value
             case "published", "updated", "dc:date": if itemDate.isEmpty { itemDate = value }
             case "item", "entry":
                 inItem = false
                 if let url = URL(string: itemLink), url.scheme?.hasPrefix("http") == true, !itemTitle.isEmpty {
-                    feed.items.append((url, itemTitle, Self.date(itemDate)))
+                    let image = URL(string: itemImage.isEmpty ? Self.firstImage(in: itemHTML) ?? "" : itemImage)
+                    feed.items.append((url, itemTitle, Self.date(itemDate), image?.scheme?.hasPrefix("http") == true ? image : nil))
                 }
             default: break
             }
@@ -280,6 +340,15 @@ final class FeedParser: NSObject, XMLParserDelegate {
             feed.title = value
         }
         text = ""
+    }
+
+    /// The first <img src="…"> of an item's HTML description.
+    private static func firstImage(in html: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: "<img[^>]+src=[\"']([^\"']+)[\"']", options: .caseInsensitive),
+              let result = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              let range = Range(result.range(at: 1), in: html)
+        else { return nil }
+        return html[range].replacingOccurrences(of: "&amp;", with: "&")
     }
 
     private static func date(_ string: String) -> Date? {
@@ -305,6 +374,7 @@ final class PageLinks: NSObject, WKNavigationDelegate {
     struct Link: Decodable {
         let url: URL
         let title: String
+        let image: URL?
     }
 
     static func extract(from page: URL) async -> [Link] {
@@ -337,7 +407,10 @@ final class PageLinks: NSObject, WKNavigationDelegate {
             if (title.length < 25 || title.split(" ").length < 4 || seen.has(url.pathname)) continue;
             seen.add(url.pathname);
             url.hash = "";
-            out.push({ url: url.href, title: title.slice(0, 200) });
+            const img = a.querySelector("img") || a.closest("article, li, figure")?.querySelector("img");
+            const src = img && (img.currentSrc || img.src || img.dataset.src || "");
+            out.push({ url: url.href, title: title.slice(0, 200),
+                       image: src && src.startsWith("http") ? src : null });
           }
           return JSON.stringify(out.slice(0, 40));
         })()

@@ -199,22 +199,30 @@ private struct WelcomeView: View {
     }
 }
 
-/// The latest articles of the user's sources.
+/// The latest articles of the user's sources, as magazine cards or a list.
 private struct ToReadSection: View {
     let model: BrowserModel
     private var feeds = Feeds.shared
+    @AppStorage("toReadStyle") private var style = "cards"
 
     init(model: BrowserModel) {
         self.model = model
     }
 
     var body: some View {
-        let items = Array(feeds.latest.prefix(20))
-        VStack(alignment: .leading, spacing: 6) {
+        let items = Array(feeds.latest.prefix(24))
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("To Read").font(.title3.weight(.semibold))
                 if feeds.isRefreshing { ProgressView().controlSize(.small) }
                 Spacer()
+                Picker("Display", selection: $style) {
+                    Image(systemName: "square.grid.2x2").help("Cards").tag("cards")
+                    Image(systemName: "list.bullet").help("List").tag("list")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
                 Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
                     .help("Refresh")
                     .disabled(feeds.isRefreshing)
@@ -228,23 +236,126 @@ private struct ToReadSection: View {
             }
             if items.isEmpty {
                 Text("No articles yet.").foregroundStyle(.secondary)
-            }
-            ForEach(items) { item in
-                HStack {
-                    ArticleRow(title: item.title, detail: detail(of: item), isRead: model.hasRead(item.url)) {
-                        model.play(item.url)
+            } else if style == "cards" {
+                cards(items)
+            } else {
+                ForEach(items) { item in
+                    HStack {
+                        ArticleRow(title: item.title, detail: detail(of: item), isRead: model.hasRead(item.url)) {
+                            model.play(item.url)
+                        }
+                        Button { model.addToPlaylist(item.url) } label: { Image(systemName: "plus.circle") }
+                            .buttonStyle(.borderless)
+                            .help("Add to Playlist")
                     }
-                    Button { model.addToPlaylist(item.url) } label: { Image(systemName: "plus.circle") }
-                        .buttonStyle(.borderless)
-                        .help("Add to Playlist")
                 }
             }
         }
     }
 
+    /// The newest article with a picture as a large card, then a grid.
+    @ViewBuilder
+    private func cards(_ items: [FeedItem]) -> some View {
+        let hero = items.first { $0.image != nil && !model.hasRead($0.url) }
+        if let hero {
+            card(hero, imageHeight: 260, titleFont: .title2.weight(.bold))
+        }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200, maximum: 340), spacing: 16, alignment: .top)],
+                  alignment: .leading, spacing: 20) {
+            ForEach(items.filter { $0.id != hero?.id }) { item in
+                card(item, imageHeight: 120, titleFont: .headline)
+            }
+        }
+    }
+
+    private func card(_ item: FeedItem, imageHeight: CGFloat, titleFont: Font) -> some View {
+        ArticleCard(item: item, detail: detail(of: item), isRead: model.hasRead(item.url),
+                    imageHeight: imageHeight, titleFont: titleFont,
+                    play: { model.play(item.url) }, add: { model.addToPlaylist(item.url) })
+    }
+
     private func detail(of item: FeedItem) -> String {
         guard let date = item.date else { return item.sourceTitle }
         return "\(item.sourceTitle) · \(date.formatted(.relative(presentation: .named)))"
+    }
+}
+
+/// A magazine card: picture, title, source and date. Click to listen, ➕ for the playlist.
+private struct ArticleCard: View {
+    let item: FeedItem
+    let detail: String
+    let isRead: Bool
+    let imageHeight: CGFloat
+    let titleFont: Font
+    let play: () -> Void
+    let add: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            picture
+                .frame(height: imageHeight)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topLeading) {
+                    if isRead {
+                        Label("Read", systemImage: "checkmark")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(.thinMaterial, in: Capsule())
+                            .padding(8)
+                    }
+                }
+                .overlay {
+                    if isHovered {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.white, .black.opacity(0.35))
+                    }
+                }
+            Text(item.title)
+                .font(titleFont)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .foregroundStyle(isRead ? .secondary : .primary)
+            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .opacity(isRead ? 0.65 : 1)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: play)
+        .onHover { isHovered = $0 }
+        .overlay(alignment: .topTrailing) {
+            Button(action: add) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white, Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .help("Add to Playlist")
+            .padding(8)
+        }
+    }
+
+    @ViewBuilder
+    private var picture: some View {
+        if let image = item.image {
+            AsyncImage(url: image) { phase in
+                if let loaded = phase.image {
+                    loaded.resizable().scaledToFill()
+                } else {
+                    placeholder
+                }
+            }
+        } else {
+            placeholder
+        }
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            Rectangle().fill(.quaternary)
+            Text(item.sourceTitle).font(.callout.weight(.semibold)).foregroundStyle(.secondary).padding()
+        }
     }
 }
 

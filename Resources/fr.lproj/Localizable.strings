@@ -142,3 +142,9 @@
 "Add the unread articles to the playlist and start listening" = "Ajouter les articles non lus à la playlist et commencer l’écoute";
 "Manage sources" = "Gérer les sources";
 "No articles yet." = "Aucun article pour l’instant.";
+
+/* Magazine view */
+"Display" = "Affichage";
+"Cards" = "Cartes";
+"List" = "Liste";
+"Read" = "Lu";

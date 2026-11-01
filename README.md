@@ -57,8 +57,10 @@ For a site, the app looks for the feed the page announces, then tries the usual 
 (`…/rss`, `/feed`, `/rss.xml`…), and otherwise loads the page (JavaScript included) and keeps its article
 links ("approximate" mode, no dates).
 
-The home screen then shows **To Read**: the latest articles of all sources, newest first; already read
-ones are dimmed. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones.
+The home screen then shows **To Read**: the latest articles of all sources, newest first, as magazine
+cards (the newest one large) or as a list (⊞ / ☰). Pictures come from the feed, from the page, or from
+each article's sharing image (`og:image`). Already read articles are dimmed and marked "Read"; an article
+listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones.
 Sources refresh at launch and every 30 minutes (↻ to refresh now).
 
 ## History
