@@ -1,12 +1,7 @@
 import SwiftUI
 
-/// Réglages (⌘,): optional Azure voices with the user's own key.
+/// Réglages (⌘,): optional Piper voices.
 struct SettingsView: View {
-    @State private var key = AzureConfig.key ?? ""
-    @State private var region = AzureConfig.region
-    @State private var isTesting = false
-    private var azure = AzureVoices.shared
-
     var body: some View {
         Form {
             Section {
@@ -15,42 +10,9 @@ struct SettingsView: View {
             }
 
             PiperSettings()
-
-            Section("Voix Azure (optionnel)") {
-                SecureField("Clé", text: $key, prompt: Text("KEY 1 de la ressource Speech"))
-                TextField("Région", text: $region, prompt: Text("canadaeast"))
-                HStack {
-                    Button(isTesting ? "Test en cours…" : "Enregistrer et tester") {
-                        AzureConfig.save(key: key, region: region)
-                        isTesting = true
-                        Task {
-                            await azure.refresh()
-                            isTesting = false
-                        }
-                    }
-                    .disabled(isTesting)
-                    if !key.isEmpty || AzureConfig.isConfigured {
-                        Button("Supprimer la clé", role: .destructive) {
-                            key = ""
-                            AzureConfig.save(key: "", region: region)
-                            Task { await azure.refresh() }
-                        }
-                    }
-                }
-                if let status = azure.status {
-                    Text(status).foregroundStyle(status.hasPrefix("Échec") ? .red : .green)
-                }
-                Text("La clé est rangée dans le trousseau macOS. Avec une voix Azure, le texte lu est envoyé à Microsoft. Le niveau gratuit F0 offre environ 500 000 caractères par mois.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Link("Créer une ressource Speech dans le portail Azure",
-                     destination: URL(string: "https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices")!)
-                Link("Écouter les voix Azure",
-                     destination: URL(string: "https://speech.microsoft.com/portal/voicegallery")!)
-            }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 640)
+        .frame(width: 540, height: 520)
     }
 }
 

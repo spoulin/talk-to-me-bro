@@ -6,7 +6,7 @@ protocol ClipSynthesizer {
     func synthesize(_ text: String, voice: String, speed: Double) async throws -> Data
 }
 
-/// Engine for voices that produce audio clips (Azure, Piper): each paragraph
+/// Engine for voices that produce audio clips (Piper, or a cloud service): each paragraph
 /// is synthesized, then played, while the next one is synthesized.
 ///
 /// These services return audio without word timings, so the spoken word is

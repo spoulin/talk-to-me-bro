@@ -34,16 +34,16 @@ Prérequis : macOS 14+, Xcode / Swift 6. Pour l'installer, copier `build/Talk to
 
 ## Choix des voix
 
-Trois moteurs, choisis dans le même menu « Aa » › Voix :
+Deux moteurs, choisis dans le même menu « Aa » › Voix ; tout reste sur le Mac :
 
 | Moteur | Qualité | Coût / compte | Confidentialité |
 | --- | --- | --- | --- |
 | **macOS** (par défaut) | Standard à Premium selon les voix téléchargées | Gratuit, rien à installer | Local |
 | **Piper** (optionnel) | Neuronale, meilleure que les voix de base | Gratuit, sans compte | Local |
-| **Azure** (optionnel) | Neuronale, la plus naturelle | Compte Azure (carte demandée), niveau gratuit F0 | Texte envoyé à Microsoft |
 
-Si Piper ou Azure échoue, la lecture continue avec la voix macOS. Ajouter un autre service
-(OpenAI, ElevenLabs…) = un `ClipSynthesizer` de plus (voir `AzureClient.swift`, `PiperService.swift`).
+Si Piper échoue, la lecture continue avec la voix macOS. Ajouter un service de voix en ligne
+(Azure, OpenAI, ElevenLabs…) = un `ClipSynthesizer` de plus, sur le modèle de `PiperSynthesizer`
+(un moteur Azure complet existe dans le premier commit de l'historique git).
 
 ## Voix Piper (optionnel, local)
 
@@ -59,24 +59,6 @@ Si Piper ou Azure échoue, la lecture continue avec la voix macOS. Ajouter un au
 - Un petit serveur Piper local (127.0.0.1) garde la voix chargée pendant la lecture ; il s'arrête avec l'app.
 - En français, Piper n'a que des voix de France (pas de voix québécoise).
 - Le mot surligné est estimé (Piper ne donne pas le minutage des mots), le paragraphe est exact.
-
-## Voix Azure (optionnel)
-
-Pour les voix neuronales les plus naturelles (dont des voix québécoises), on peut brancher sa propre
-ressource **Azure Speech** :
-
-1. Créer un compte Azure (https://azure.microsoft.com/free/), puis une ressource **Speech**
-   (https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices) au niveau **Free F0**
-   (environ 500 000 caractères par mois gratuits).
-2. Dans la ressource : *Keys and Endpoint* → copier **KEY 1** et la **région** (ex. `canadaeast`).
-3. Dans l'app : **Réglages** (⌘,) → coller la clé et la région → *Enregistrer et tester*.
-4. Les voix Azure de la langue du système apparaissent dans le menu « Aa » › Voix.
-
-- La clé est rangée dans le trousseau macOS, jamais dans un fichier du projet.
-- Avec une voix Azure, le texte lu est envoyé à Microsoft.
-- L'audio est mis en cache dans `~/Library/Caches/local.browspeaker/azure` : relire un article ne
-  recompte pas dans le quota.
-- Le paragraphe lu est surligné ; le mot surligné est estimé (l'API REST ne donne pas le minutage des mots).
 
 ## Partager vers Talk to me Bro
 
@@ -114,7 +96,7 @@ existante, passe en mode lecture et la lecture commence.
 - `SpeechController` : état de lecture, choix de la voix et du moteur (`SpeechEngine`).
 - `SystemSpeechEngine` : `AVSpeechSynthesizer`, avec la voix système (`NSSpeechSynthesizer.defaultVoice`),
   relue à chaque lecture.
-- `ClipSpeechEngine` : moteurs qui produisent un fichier audio par paragraphe (Piper, Azure), avec
+- `ClipSpeechEngine` : moteurs qui produisent un fichier audio par paragraphe (Piper), avec
   préchargement du paragraphe suivant.
 - Les voix **Siri** ne sont pas accessibles aux applications tierces : dans ce cas, Talk to me Bro
   prend une voix de la même langue (indiqué « remplacement » dans le menu).

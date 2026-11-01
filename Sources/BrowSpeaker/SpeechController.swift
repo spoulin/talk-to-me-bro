@@ -21,7 +21,7 @@ struct SpeechEngineEvents {
 }
 
 /// Reads the reader page aloud: keeps the playback state and routes to the
-/// engine of the selected voice (macOS voices by default; Piper or Azure when set up).
+/// engine of the selected voice (macOS voices by default, Piper when installed).
 @MainActor
 @Observable
 final class SpeechController {
@@ -50,8 +50,6 @@ final class SpeechController {
 
     var voiceLabel: String {
         switch Voice.parse(voiceKey) {
-        case (.azure, let id?):
-            AzureVoices.shared.voices.first { $0.id == id }?.label ?? "\(id) — Azure"
         case (.piper, let id?):
             PiperService.shared.voices.first { $0.id == id }?.label ?? "\(id) — Piper"
         case (_, let id?):
@@ -67,7 +65,6 @@ final class SpeechController {
     @ObservationIgnored var onError: ((String) -> Void)?
 
     @ObservationIgnored private let systemEngine = SystemSpeechEngine()
-    @ObservationIgnored private let azureEngine = ClipSpeechEngine(AzureSynthesizer())
     @ObservationIgnored private let piperEngine = ClipSpeechEngine(PiperSynthesizer())
     @ObservationIgnored private var engine: SpeechEngine?
     @ObservationIgnored private var blocks: [String] = []
@@ -75,7 +72,7 @@ final class SpeechController {
     var hasBlocks: Bool { !blocks.isEmpty && state != .idle }
 
     init() {
-        let engines: [(SpeechEngine, String)] = [(systemEngine, "macOS"), (azureEngine, "Azure"), (piperEngine, "Piper")]
+        let engines: [(SpeechEngine, String)] = [(systemEngine, "macOS"), (piperEngine, "Piper")]
         for (engine, name) in engines {
             engine.events = SpeechEngineEvents(
                 blockStarted: { [weak self] i in
@@ -139,8 +136,6 @@ final class SpeechController {
 
     private func resolveEngine() -> (SpeechEngine, String?) {
         switch Voice.parse(voiceKey) {
-        case (.azure, let id?) where AzureConfig.isConfigured:
-            (azureEngine, id)
         case (.piper, let id?) where PiperService.shared.isInstalled:
             (piperEngine, id)
         case (.system, let id):
@@ -179,14 +174,13 @@ final class SpeechController {
 
 /// A voice from any engine, as listed in the voice menu.
 struct Voice: Hashable, Identifiable {
-    enum Engine: String { case system, azure, piper }
+    enum Engine: String { case system, piper }
 
     let engine: Engine
     let id: String
     let label: String
 
-    /// Stored selection and picker tag: "system:com.apple.voice…", "azure:fr-CA-SylvieNeural",
-    /// "piper:fr_FR-siwis-medium".
+    /// Stored selection and picker tag: "system:com.apple.voice…" or "piper:fr_FR-siwis-medium".
     var key: String { "\(engine.rawValue):\(id)" }
 
     static func parse(_ key: String?) -> (Engine?, String?) {

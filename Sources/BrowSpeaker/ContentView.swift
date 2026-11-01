@@ -56,7 +56,6 @@ struct ContentView: View {
             .onChange(of: model.addressFocusRequest) { addressFocused = true }
             .onDisappear { model.speech.stop() }
             .onOpenURL { model.handleOpenURL($0) }
-            .task { await AzureVoices.shared.loadIfNeeded() }
             // Shared links go to an existing window instead of opening a new one.
             .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
             .frame(minWidth: 760, minHeight: 500)
@@ -103,7 +102,6 @@ private struct SpeechControls: View {
 
 private struct VoicePicker: View {
     @Bindable var speech: SpeechController
-    private var azure = AzureVoices.shared
     private var piper = PiperService.shared
 
     init(speech: SpeechController) {
@@ -125,12 +123,6 @@ private struct VoicePicker: View {
                         Text(voice.label).tag(Optional(voice.key))
                     }
                 }
-                if !azure.voices.isEmpty {
-                    Divider()
-                    ForEach(azure.voices) { voice in
-                        Text(voice.label).tag(Optional(voice.key))
-                    }
-                }
             }
             .pickerStyle(.inline)
             Menu("Autres langues") {
@@ -141,7 +133,7 @@ private struct VoicePicker: View {
                 }
                 .pickerStyle(.inline)
             }
-            SettingsLink { Text("Autres voix (Piper, Azure)…") }
+            SettingsLink { Text("Voix Piper…") }
         }
     }
 }
