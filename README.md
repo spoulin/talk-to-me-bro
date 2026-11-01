@@ -64,7 +64,7 @@ the time left, the playback controls, speed and pauses, voice, and text size.
 
 **Settings › Voices › Voices by type**: a different voice for titles, photo captions and quotes ("Same
 as text" by default), mixing macOS and Piper voices freely. *Announce captions* says "Caption:" (in the
-article's language) before each caption.
+article's language) before a caption, once for several captions in a row.
 
 Changes to the dictionary and to the voices by type apply from the next paragraph, without cutting the
 current one.

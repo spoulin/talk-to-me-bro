@@ -67,7 +67,8 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
 
 **Réglages › Voix › Voix par type** : une voix différente pour les titres, les légendes de photos et les
 citations (« Même voix que le texte » par défaut), en mélangeant librement voix macOS et Piper.
-*Annoncer les légendes* dit « Légende : » (dans la langue de l'article) avant chaque légende.
+*Annoncer les légendes* dit « Légende : » (dans la langue de l'article) avant une légende, une seule fois
+pour plusieurs légendes de suite.
 
 Les changements du dictionnaire et des voix par type s'appliquent dès le paragraphe suivant, sans couper
 celui en cours.

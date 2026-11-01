@@ -61,8 +61,10 @@ enum SpeechScript {
         for block in index..<blocks.count {
             let firstOfBlock = segments.count
             let kind = kinds.indices.contains(block) ? kinds[block] : .text
+            // Announced once for a series of captions (and always where reading starts).
+            let followsCaption = block > index && kinds.indices.contains(block - 1) && kinds[block - 1] == .caption
             appendSegments(of: blocks[block] as NSString, block: block, kind: kind, pacing: pacing, rules: rules,
-                           announcement: kind == .caption ? captionLabel : "", to: &segments)
+                           announcement: kind == .caption && !followsCaption ? captionLabel : "", to: &segments)
             if segments.count > firstOfBlock { segments[firstOfBlock].isFirstInBlock = true }
         }
         return segments
