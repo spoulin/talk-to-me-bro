@@ -64,6 +64,9 @@ private struct VoiceRolesSettings: View {
 private struct PronunciationSettings: View {
     @Bindable private var dictionary = Pronunciations.shared
     @State private var selection = Set<UUID>()
+    /// The row being edited: clicking in a text field doesn't select its row.
+    @FocusState private var focused: UUID?
+    @State private var lastFocused: UUID?
     /// Plays a word through the dictionary with the current voice.
     @State private var preview: SpeechController?
 
@@ -78,12 +81,18 @@ private struct PronunciationSettings: View {
                 ForEach($dictionary.entries) { $entry in
                     HStack {
                         TextField("Original text", text: $entry.word, prompt: Text("Original text"))
+                            .focused($focused, equals: entry.id)
                         Image(systemName: "arrow.right").foregroundStyle(.secondary)
                         TextField("Phonetic spelling", text: $entry.replacement, prompt: Text("Phonetic spelling"))
+                            .focused($focused, equals: entry.id)
                         Button { listen(to: entry) } label: { Image(systemName: "play.circle") }
                             .buttonStyle(.borderless)
                             .help("Listen with the current voice")
                             .disabled(entry.word.trimmingCharacters(in: .whitespaces).isEmpty)
+                        Button { remove([entry.id]) } label: { Image(systemName: "trash") }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.secondary)
+                            .help("Remove")
                     }
                     .textFieldStyle(.roundedBorder)
                     .tag(entry.id)
@@ -91,6 +100,7 @@ private struct PronunciationSettings: View {
                 .onDelete { dictionary.entries.remove(atOffsets: $0) }
             }
             .onDeleteCommand(perform: removeSelected)
+            .onChange(of: focused) { if let focused { lastFocused = focused } }
             .overlay {
                 if dictionary.entries.isEmpty {
                     Text("No words yet.").foregroundStyle(.secondary)
@@ -98,11 +108,11 @@ private struct PronunciationSettings: View {
             }
 
             HStack {
-                Button { dictionary.entries.append(PronunciationEntry()) } label: { Image(systemName: "plus") }
+                Button(action: add) { Image(systemName: "plus") }
                     .help("Add a word")
                 Button(action: removeSelected) { Image(systemName: "minus") }
                     .help("Remove the selected words")
-                    .disabled(selection.isEmpty)
+                    .disabled(selection.isEmpty && lastFocused == nil)
                 Spacer()
                 Text("Changes apply from the next paragraph.")
                     .font(.caption)
@@ -112,9 +122,21 @@ private struct PronunciationSettings: View {
         .padding()
     }
 
+    private func add() {
+        let entry = PronunciationEntry()
+        dictionary.entries.append(entry)
+        focused = entry.id
+    }
+
+    /// The selected rows, or else the row being edited.
     private func removeSelected() {
-        dictionary.entries.removeAll { selection.contains($0.id) }
-        selection = []
+        remove(selection.isEmpty ? Set([lastFocused].compactMap { $0 }) : selection)
+    }
+
+    private func remove(_ ids: Set<UUID>) {
+        dictionary.entries.removeAll { ids.contains($0.id) }
+        selection.subtract(ids)
+        if let lastFocused, ids.contains(lastFocused) { self.lastFocused = nil }
     }
 
     /// Reads the word itself, so what you hear is the dictionary rule at work.
