@@ -292,6 +292,16 @@ final class BrowserModel: NSObject {
         phase = .ready
         if let articleURL { history.record(articleURL, title: articleTitle, site: siteName) }
         webView.evaluateJavaScript(VideoPage.focus, in: nil, in: .defaultClient)
+        // Opened to be watched: start it, like articles start reading. Wait for the
+        // site's player to be ready, then act once: a second press disrupts some players.
+        Task {
+            for _ in 0..<12 {
+                try? await Task.sleep(for: .seconds(1))
+                guard isVideo,
+                      await webView.evaluate(VideoPage.autoplay, in: .defaultClient) == "none"
+                else { return }
+            }
+        }
         videoTime = 0
         videoDuration = 0
         videoPlaying = false

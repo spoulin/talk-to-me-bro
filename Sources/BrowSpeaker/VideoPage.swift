@@ -74,8 +74,31 @@ enum VideoPage {
 
     /// {t: current time, d: duration, p: playing} for the player bar.
     static let state = """
-    (() => { const v = \(video); return v ? JSON.stringify({t: v.currentTime || 0, d: isFinite(v.duration) ? v.duration : 0, p: !v.paused}) : "null"; })()
+    (() => { const v = \(video); return v ? JSON.stringify({t: v.currentTime || 0, d: isFinite(v.duration) ? v.duration : 0, p: !v.paused && v.readyState > 2}) : "null"; })()
     """
+
+    /// One autoplay attempt: "playing" once a video of the page (or its ad) is
+    /// really playing; otherwise presses the site's own play button, which
+    /// lets its player load the video (and its ads), or else calls play().
+    static let autoplay = """
+    (() => {
+      const videos = [...document.querySelectorAll("video")];
+      if (videos.some(v => !v.paused && v.currentTime > 0)) return "playing";
+      const box = document.querySelector(".bs-video-box") || document.body;
+      const area = e => { const r = e.getBoundingClientRect(); return r.width * r.height; };
+      const buttons = [...box.querySelectorAll("button, [role=button]")].filter(b => {
+        const label = [b.getAttribute("aria-label"), b.title, String(b.className)].join(" ").toLowerCase();
+        return area(b) > 0 && /play|lecture|lire|jouer|démarrer/.test(label) && !/pause|replay/.test(label);
+      }).sort((a, b) => area(b) - area(a));
+      if (buttons[0]) { buttons[0].click(); return "clicked"; }
+      const v = box.querySelector("video") || videos[0];
+      if (v) { v.play().catch(() => {}); return "play"; }
+      return "none";
+    })()
+    """
+
+    /// Whether any video of the page is really playing, ads included.
+    static let anythingPlaying = "String([...document.querySelectorAll('video')].some(v => !v.paused && v.currentTime > 0))"
 
     static func seek(to seconds: Double) -> String {
         "(() => { const v = \(video); if (v) v.currentTime = Math.max(0, \(seconds)); })()"
