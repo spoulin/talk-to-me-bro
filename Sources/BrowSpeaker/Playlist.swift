@@ -31,14 +31,29 @@ final class Playlist {
         }
     }
 
-    /// Returns false when the page is already waiting.
+    /// Returns false when the page is already waiting. Without a known title
+    /// (a shared link), the title is fetched from the page.
     @discardableResult
-    func add(_ url: URL) -> Bool {
+    func add(_ url: URL, title: String? = nil, site: String? = nil) -> Bool {
         guard !items.contains(where: { $0.url == url }) else { return false }
-        let item = PlaylistItem(url: url)
+        let item = PlaylistItem(url: url, title: title, site: site)
         items.append(item)
-        Task { await fetchTitle(of: item) }
+        if title == nil { Task { await fetchTitle(of: item) } }
         return true
+    }
+
+    /// Items still showing only an address: take their title from what the app
+    /// already knows (sources, history), or else fetch it again.
+    func repairTitles(using known: (URL) -> (title: String, site: String)?) {
+        for index in items.indices where items[index].title == nil {
+            if let found = known(items[index].url) {
+                items[index].title = found.title
+                items[index].site = found.site
+            } else {
+                let item = items[index]
+                Task { await fetchTitle(of: item) }
+            }
+        }
     }
 
     func popFirst() -> PlaylistItem? {

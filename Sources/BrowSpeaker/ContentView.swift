@@ -320,7 +320,7 @@ private struct ToReadSection: View {
                                    isVideo: Self.isVideo(item.url)) {
                             model.play(item.url)
                         }
-                        Button { model.addToPlaylist(item.url) } label: { Image(systemName: "plus.circle") }
+                        Button { model.addToPlaylist(item.url, title: item.title, site: item.sourceTitle) } label: { Image(systemName: "plus.circle") }
                             .buttonStyle(.borderless)
                             .help("Add to Playlist")
                     }
@@ -332,7 +332,7 @@ private struct ToReadSection: View {
 
     private func listenToAll(_ items: [FeedItem], oldestFirst: Bool) {
         self.oldestFirst = oldestFirst
-        let unread = items.filter { !model.hasRead($0.url) }.map(\.url)
+        let unread = items.filter { !model.hasRead($0.url) }
         model.listenToAll(oldestFirst ? unread.reversed() : unread)
     }
 
@@ -365,13 +365,13 @@ private struct ToReadSection: View {
     private func card(_ item: FeedItem, imageHeight: CGFloat, titleFont: Font) -> some View {
         ArticleCard(item: item, detail: detail(of: item), isRead: tab != .history && model.hasRead(item.url),
                     imageHeight: imageHeight, titleFont: titleFont,
-                    play: { model.play(item.url) }, add: { model.addToPlaylist(item.url) })
+                    play: { model.play(item.url) }, add: { model.addToPlaylist(item.url, title: item.title, site: item.sourceTitle) })
             .contextMenu { menu(for: item) }
     }
 
     @ViewBuilder
     private func menu(for item: FeedItem) -> some View {
-        Button("Add to Playlist") { model.addToPlaylist(item.url) }
+        Button("Add to Playlist") { model.addToPlaylist(item.url, title: item.title, site: item.sourceTitle) }
         Button("Open in Browser") { NSWorkspace.shared.open(item.url) }
         if tab == .history {
             Divider()
@@ -780,7 +780,7 @@ private struct HistoryView: View {
                     .buttonStyle(.plain)
                     .padding(.vertical, 2)
                     .contextMenu {
-                        Button("Add to Playlist") { model.addToPlaylist(item.url) }
+                        Button("Add to Playlist") { model.addToPlaylist(item.url, title: item.title, site: item.site) }
                         Button("Open in Browser") { NSWorkspace.shared.open(item.url) }
                         Divider()
                         Button("Remove from History", role: .destructive) { history.remove(item.id) }

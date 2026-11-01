@@ -94,6 +94,15 @@ final class BrowserModel: NSObject {
         speech.onWord = { [weak self] i, r in self?.readerJS("__bs.highlightWord(\(i),\(r.location),\(r.length))") }
         speech.onFinish = { [weak self] in self?.readerJS("__bs.clear()") }
         speech.onComplete = { [weak self] in self?.articleFinished() }
+
+        // Playlist items added before titles were kept: fill them in from the sources and history.
+        let feeds = Feeds.shared, history = History.shared
+        playlist.repairTitles { url in
+            let key = Self.readKey(url)
+            if let item = feeds.items.first(where: { Self.readKey($0.url) == key }) { return (item.title, item.sourceTitle) }
+            if let item = history.items.first(where: { Self.readKey($0.url) == key }) { return (item.title, item.site) }
+            return nil
+        }
         speech.onError = { [weak self] message in self?.errorMessage = message }
     }
 
@@ -197,8 +206,8 @@ final class BrowserModel: NSObject {
     }
 
     /// Queues the articles and starts the first one if nothing is playing.
-    func listenToAll(_ urls: [URL]) {
-        urls.forEach { playlist.add($0) }
+    func listenToAll(_ articles: [FeedItem]) {
+        articles.forEach { playlist.add($0.url, title: $0.title, site: $0.sourceTitle) }
         if phase != .ready || speech.state == .idle { playNextInPlaylist() }
     }
 
@@ -213,8 +222,8 @@ final class BrowserModel: NSObject {
         (url.host() ?? "") + url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
-    func addToPlaylist(_ url: URL) {
-        showNotice(playlist.add(url) ? String(localized: "Added to playlist") : String(localized: "Already in the playlist"))
+    func addToPlaylist(_ url: URL, title: String? = nil, site: String? = nil) {
+        showNotice(playlist.add(url, title: title, site: site) ? String(localized: "Added to playlist") : String(localized: "Already in the playlist"))
     }
 
     func playNow(_ id: UUID) {
