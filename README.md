@@ -56,10 +56,12 @@ the time left, the playback controls, speed and pauses, voice, and text size.
 
 **Settings › Sources**: paste the address of a site (e.g. `example.com/news`) or of an RSS/Atom feed.
 For a site, the app looks for the feed the page announces, then tries the usual feed addresses
-(`…/rss`, `/feed`, `/rss.xml`…), and otherwise loads the page (JavaScript included) and keeps its article
+(`…/rss`, `/feed`, `/rss.xml`…) and the feeds listed on a "RSS" page linked from the home page, and
+otherwise loads the page (JavaScript included) and keeps its article
 links ("approximate" mode, no dates).
 
-The home screen then shows **To Read**: the latest articles of all sources, newest first, as magazine
+The home screen then shows **To Read**: the latest articles of all sources, newest first (articles
+without a date in their source get it from the article itself), as magazine
 cards (the newest one large) or as a list (⊞ / ☰). Pictures come from the feed, from the page, or from
 each article's sharing image (`og:image`). Already read articles are dimmed and marked "Read"; an article
 listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones. Tabs show *All*,

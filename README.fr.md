@@ -57,11 +57,12 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
 
 **Réglages › Sources** : coller l'adresse d'un site (ex. : `example.com/nouvelles`) ou d'un flux RSS/Atom.
 Pour un site, l'app cherche le flux annoncé par la page, puis essaie les adresses de flux habituelles
-(`…/rss`, `/feed`, `/rss.xml`…), sinon elle charge la page (JavaScript compris) et garde ses liens
+(`…/rss`, `/feed`, `/rss.xml`…) et les flux listés sur une page « RSS » liée depuis l'accueil, sinon elle
+charge la page (JavaScript compris) et garde ses liens
 d'articles (mode « approximatif », sans dates).
 
 L'accueil affiche alors **À lire** : les derniers articles de toutes les sources, du plus récent au plus
-ancien, en cartes façon magazine (le plus récent en grand) ou en liste (⊞ / ☰). Les images viennent du
+ancien (un article sans date dans sa source la prend dans l'article lui-même), en cartes façon magazine (le plus récent en grand) ou en liste (⊞ / ☰). Les images viennent du
 flux, de la page, ou de l'image de partage de chaque article (`og:image`). Les articles déjà lus sont
 grisés et marqués « Lu » ; un article présent dans plusieurs sources n'apparaît qu'une fois. Clic pour écouter, ➕ pour ajouter à la playlist, *Tout écouter* pour
 mettre les non lus en file. Des onglets montrent *Tout*, seulement les *Articles* ou les *Vidéos*, ou

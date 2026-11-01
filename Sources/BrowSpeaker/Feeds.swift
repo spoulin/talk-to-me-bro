@@ -19,19 +19,29 @@ struct FeedSource: Codable, Identifiable, Hashable {
     var mode: Mode
     var title: String
     var lastError: String?
-    /// Last time a source read from its page was checked for a feed.
+    /// Last time a source read from its page was checked for a feed, and with
+    /// which version of the discovery (an improved one checks again at once).
     var feedCheckedAt: Date?
+    var feedCheckRevision: Int?
 }
 
 struct FeedItem: Codable, Identifiable, Hashable {
     var id: URL { url }
     let url: URL
     let title: String
-    let date: Date?
+    /// Publication date: from the feed, or read in the article.
+    var date: Date?
     let sourceID: UUID
     let sourceTitle: String
     /// A picture for the magazine view: from the feed, the page, or the article's sharing image.
     var image: URL?
+    /// When the app first listed the article.
+    var firstSeen: Date?
+    /// For an article with no date: the date of its neighbor on the source page,
+    /// to keep it in place when sorting (not shown).
+    var estimatedDate: Date?
+    /// The article itself was read for a missing date or picture (not done again).
+    var detailsChecked: Bool?
 }
 
 /// Sites and feeds the user follows, and their latest articles. Accepts a feed
@@ -56,13 +66,16 @@ final class Feeds {
     private(set) var addError: String?
     @ObservationIgnored private var lastRefresh = Date.distantPast
     private static let feedCheckInterval: TimeInterval = 7 * 24 * 3600
+    /// Bump when discovery finds feeds it could not before (2: feed listing pages).
+    private static let feedCheckRevision = 2
 
     init() {
         sources = load("feedSources") ?? []
         items = load("feedItems") ?? []
     }
 
-    /// Newest first; page links (no date) keep their page order after dated items.
+    /// Newest first, all sources mixed: by publication date, or for an article
+    /// with no date, by when it first appeared.
     /// An article listed by several sources appears once, with the best details.
     var latest: [FeedItem] {
         var best: [URL: FeedItem] = [:]
@@ -76,12 +89,9 @@ final class Feeds {
         return items.enumerated().filter { seen.insert($0.element.url).inserted }
             .compactMap { pair in best[pair.element.url].map { (pair.offset, $0) } }
             .sorted { a, b in
-                switch (a.1.date, b.1.date) {
-                case let (x?, y?): x > y
-                case (.some, nil): true
-                case (nil, .some): false
-                case (nil, nil): a.0 < b.0
-                }
+                let x = a.1.date ?? a.1.estimatedDate ?? a.1.firstSeen ?? .distantPast
+                let y = b.1.date ?? b.1.estimatedDate ?? b.1.firstSeen ?? .distantPast
+                return x != y ? x > y : a.0 < b.0
             }
             .map(\.1)
     }
@@ -138,10 +148,12 @@ final class Feeds {
         var source = source
         // A source read from its page (or added before feeds were found this way):
         // look for a feed again, once a week.
-        if source.mode == .page, Date().timeIntervalSince(source.feedCheckedAt ?? .distantPast) > Self.feedCheckInterval {
+        if source.mode == .page, source.feedCheckRevision != Self.feedCheckRevision
+            || Date().timeIntervalSince(source.feedCheckedAt ?? .distantPast) > Self.feedCheckInterval {
             let feed = await Self.discover(source.address, feedsOnly: true)
             if let index = sources.firstIndex(where: { $0.id == source.id }) {
                 sources[index].feedCheckedAt = Date()
+                sources[index].feedCheckRevision = Self.feedCheckRevision
                 if let feed {
                     sources[index].url = feed.url
                     sources[index].mode = .feed
@@ -166,22 +178,36 @@ final class Feeds {
         guard let index = sources.firstIndex(where: { $0.id == source.id }) else { return }
         sources[index].lastError = error
         guard !fetched.isEmpty else { return }
-        let known = Dictionary(items.compactMap { item in item.image.map { (item.url, $0) } }, uniquingKeysWith: { a, _ in a })
-        var fresh = fetched.prefix(Self.itemsPerSource).map {
-            FeedItem(url: $0.url, title: $0.title, date: $0.date, sourceID: source.id, sourceTitle: sources[index].title,
-                     image: $0.image ?? known[$0.url])
+        let previous = Dictionary(items.map { ($0.url, $0) }, uniquingKeysWith: { a, _ in a })
+        let now = Date()
+        var fresh = fetched.prefix(Self.itemsPerSource).map { entry -> FeedItem in
+            let old = previous[entry.url]
+            return FeedItem(url: entry.url, title: entry.title, date: entry.date ?? old?.date, sourceID: source.id,
+                            sourceTitle: sources[index].title, image: entry.image ?? old?.image,
+                            firstSeen: old?.firstSeen ?? now, detailsChecked: old?.detailsChecked)
         }
         items = items.filter { $0.sourceID != source.id } + fresh
-        // Articles without a picture: use their sharing image (og:image), fetched in the background.
-        let missing = fresh.filter { $0.image == nil }.map(\.url)
-        guard !missing.isEmpty else { return }
-        let found = await withTaskGroup(of: (URL, URL?).self) { group in
-            for url in missing { group.addTask { (url, await Self.sharingImage(of: url)) } }
-            var found: [URL: URL] = [:]
-            for await (url, image) in group { found[url] = image }
+        // Articles without a date or a picture: read them in the article itself
+        // (article:published_time, og:image…), once per article, in the background.
+        let missing = Set(fresh.filter { ($0.date == nil || $0.image == nil) && $0.detailsChecked != true }.map(\.url))
+        let found: [URL: ArticleDetails] = missing.isEmpty ? [:] : await withTaskGroup(of: (URL, ArticleDetails?).self) { group in
+            for url in missing { group.addTask { (url, await Self.articleDetails(of: url)) } }
+            var found: [URL: ArticleDetails] = [:]
+            for await (url, details) in group { found[url] = details }
             return found
         }
-        for i in fresh.indices where fresh[i].image == nil { fresh[i].image = found[fresh[i].url] }
+        for i in fresh.indices where missing.contains(fresh[i].url) {
+            let details = found[fresh[i].url]
+            fresh[i].date = fresh[i].date ?? details?.date
+            fresh[i].image = fresh[i].image ?? details?.image
+            fresh[i].detailsChecked = true
+        }
+        // Still no date: borrow the one of the previous article on the page (or
+        // the next one), since a page lists its articles from newest to oldest.
+        var previousDate = fresh.first { $0.date != nil }?.date
+        for i in fresh.indices {
+            if let date = fresh[i].date { previousDate = date } else { fresh[i].estimatedDate = previousDate }
+        }
         items = items.filter { $0.sourceID != source.id } + fresh
     }
 
@@ -220,6 +246,23 @@ final class Feeds {
                 return FeedSource(address: address, url: candidate, mode: .feed, title: feed.title ?? pageTitle)
             }
         }
+        // A page listing the site's feeds, linked from the home page ("Flux RSS"…).
+        for listingURL in links(in: html, base: address).filter({ isFeedListing($0, of: address) }).prefix(4) {
+            guard let data = await fetch(listingURL) else { continue }
+            if let feed = FeedParser.parse(data), !feed.items.isEmpty {
+                return FeedSource(address: address, url: listingURL, mode: .feed, title: feed.title ?? pageTitle)
+            }
+            let listing = String(decoding: data, as: UTF8.self)
+            let feeds = announcedFeeds(in: listing, base: listingURL) + links(in: listing, base: listingURL).filter {
+                let path = $0.path().lowercased()
+                return path.hasSuffix(".xml") || path.hasSuffix(".rss") || path.contains("/rss/") || path.contains("/feed")
+            }
+            for candidate in feeds.prefix(12) {
+                if let data = await fetch(candidate), let feed = FeedParser.parse(data), !feed.items.isEmpty {
+                    return FeedSource(address: address, url: candidate, mode: .feed, title: feed.title ?? pageTitle)
+                }
+            }
+        }
         guard !feedsOnly, !(await PageLinks.extract(from: address)).isEmpty else { return nil }
         return FeedSource(address: address, url: address, mode: .page, title: pageTitle)
     }
@@ -239,20 +282,64 @@ final class Feeds {
         }
     }
 
-    /// The image a page shows when it is shared (og:image, twitter:image).
-    nonisolated static func sharingImage(of page: URL) async -> URL? {
-        guard let data = await fetch(page) else { return nil }
-        let html = String(decoding: data.prefix(300_000), as: UTF8.self)
-        for property in ["og:image", "twitter:image"] {
-            for pattern in ["<meta[^>]+(?:property|name)=[\"']\(property)[\"'][^>]*content=[\"']([^\"']+)[\"']",
-                            "<meta[^>]+content=[\"']([^\"']+)[\"'][^>]*(?:property|name)=[\"']\(property)[\"']"] {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-                   let result = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-                   let range = Range(result.range(at: 1), in: html),
-                   let url = URL(string: html[range].replacingOccurrences(of: "&amp;", with: "&"), relativeTo: page)?.absoluteURL {
-                    return url
-                }
+    /// Every link of a page, as absolute addresses.
+    private static func links(in html: String, base: URL) -> [URL] {
+        guard let regex = try? NSRegularExpression(pattern: "href=[\"']([^\"'#]+)[\"']", options: .caseInsensitive) else { return [] }
+        var seen = Set<URL>()
+        return regex.matches(in: html, range: NSRange(html.startIndex..., in: html)).compactMap { result in
+            Range(result.range(at: 1), in: html).flatMap {
+                URL(string: html[$0].replacingOccurrences(of: "&amp;", with: "&"), relativeTo: base)?.absoluteURL
             }
+        }.filter { $0.scheme?.hasPrefix("http") == true && seen.insert($0).inserted }
+    }
+
+    /// A same-site page whose address mentions feeds: "/flux-rss", "/rss", "/feeds"…
+    private static func isFeedListing(_ url: URL, of site: URL) -> Bool {
+        let host = { (url: URL) in (url.host() ?? "").replacingOccurrences(of: "www.", with: "") }
+        let path = url.path().lowercased()
+        return host(url) == host(site) && (path.contains("rss") || path.contains("feed") || path.contains("atom"))
+    }
+
+    struct ArticleDetails {
+        var image: URL?
+        var date: Date?
+    }
+
+    /// What an article page says about itself: its sharing image (og:image,
+    /// twitter:image) and publication date (article:published_time, datePublished…).
+    nonisolated static func articleDetails(of page: URL) async -> ArticleDetails? {
+        guard let data = await fetch(page) else { return nil }
+        let html = String(decoding: data.prefix(400_000), as: UTF8.self)
+        func meta(_ names: String) -> String? {
+            for pattern in ["<meta[^>]+(?:property|name|itemprop)=[\"'](?:\(names))[\"'][^>]*content=[\"']([^\"']+)[\"']",
+                            "<meta[^>]+content=[\"']([^\"']+)[\"'][^>]*(?:property|name|itemprop)=[\"'](?:\(names))[\"']"] {
+                if let value = firstMatch(pattern, in: html) { return value }
+            }
+            return nil
+        }
+        let image = meta("og:image|twitter:image").flatMap {
+            URL(string: $0.replacingOccurrences(of: "&amp;", with: "&"), relativeTo: page)?.absoluteURL
+        }
+        let dateText = meta("article:published_time|og:published_time|datePublished|pubdate|publish-date|date")
+            ?? firstMatch("\"datePublished\"\\s*:\\s*\"([^\"]+)\"", in: html)
+            ?? firstMatch("<time[^>]+datetime=[\"']([^\"']+)[\"']", in: html)
+        return ArticleDetails(image: image, date: dateText.flatMap(parseDate))
+    }
+
+    private nonisolated static func firstMatch(_ pattern: String, in text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+              let result = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(result.range(at: 1), in: text)
+        else { return nil }
+        return String(text[range])
+    }
+
+    /// "2026-11-01T09:31:41-05:00", with or without fractions of a second, or a plain day.
+    private nonisolated static func parseDate(_ text: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        for options: ISO8601DateFormatter.Options in [[.withInternetDateTime, .withFractionalSeconds], [.withInternetDateTime], [.withFullDate]] {
+            formatter.formatOptions = options
+            if let date = formatter.date(from: text.trimmingCharacters(in: .whitespaces)) { return date }
         }
         return nil
     }
