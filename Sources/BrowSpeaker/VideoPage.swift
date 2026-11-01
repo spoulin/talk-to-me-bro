@@ -234,5 +234,14 @@ extension VideoPage {
             else { return nil }
             return (info.title, info.author_name)
         }
+
+        /// When the video was published: on its watch page (oEmbed doesn't say).
+        static func publishDate(videoID: String) async -> Date? {
+            guard let page = URL(string: "https://www.youtube.com/watch?v=\(videoID)"),
+                  let data = await Feeds.fetch(page),
+                  let text = Feeds.firstMatch("\"(?:publishDate|uploadDate)\":\"([^\"]+)\"", in: String(decoding: data, as: UTF8.self))
+            else { return nil }
+            return Feeds.parseDate(text)
+        }
     }
 }

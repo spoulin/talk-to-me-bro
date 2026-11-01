@@ -9,6 +9,8 @@ struct Article: Decodable {
     var words: Int?
     /// The line above the title in a heading in parts ("L'argent et le bonheur").
     var kicker: String?
+    /// When the page says it was published (ISO 8601), or "".
+    var published: String?
 }
 
 /// The "Just Read"-style page: article extraction on the live page with
@@ -39,6 +41,24 @@ enum ReaderPage {
           }
           return [norm(el.textContent)];
         };
+        // When the page says it was published: Readability's finding, its metadata,
+        // else a <time> of the article.
+        var published = function (text) {
+          var meta = document.querySelector('meta[property="article:published_time"], meta[property="og:published_time"], ' +
+            'meta[itemprop="datePublished"], meta[itemprop="uploadDate"], meta[name="pubdate"], meta[name="publish-date"]');
+          text = text || (meta && meta.getAttribute("content"));
+          var scripts = document.querySelectorAll('script[type="application/ld+json"]');
+          for (var i = 0; i < scripts.length && !text; i++) {
+            var found = /"(?:datePublished|uploadDate)"\\s*:\\s*"([^"]+)"/.exec(scripts[i].textContent);
+            if (found) text = found[1];
+          }
+          if (!text) {
+            var time = document.querySelector("article time[datetime], time[datetime]");
+            text = time && time.getAttribute("datetime");
+          }
+          var date = new Date(text || "");
+          return isNaN(date) ? "" : date.toISOString();
+        };
         var splitTitle = function (title) {
           var headings = document.querySelectorAll("h1");
           for (var i = 0; i < headings.length; i++) {
@@ -58,7 +78,7 @@ enum ReaderPage {
               title: heading.title, kicker: heading.kicker, byline: a.byline || "",
               siteName: a.siteName || location.hostname, content: a.content,
               lang: a.lang || document.documentElement.lang || "",
-              words: a.textContent.trim().split(/\\s+/).length
+              words: a.textContent.trim().split(/\\s+/).length, published: published(a.publishedTime)
             });
           }
         } catch (e) {}
@@ -68,7 +88,7 @@ enum ReaderPage {
         return JSON.stringify({
           title: document.title, byline: "", siteName: location.hostname,
           content: paras.map(function (p) { return "<p>" + esc(p) + "</p>"; }).join(""),
-          lang: document.documentElement.lang || ""
+          lang: document.documentElement.lang || "", published: published()
         });
         })()
         """

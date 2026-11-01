@@ -583,6 +583,12 @@ private struct PlayerBar: View {
                     Text(model.articleTitle).font(.headline).lineLimit(1)
                     HStack(spacing: 6) {
                         Text(model.siteName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        if let date = model.articleDate {
+                            Text(verbatim: "· " + min(date, .now).formatted(.relative(presentation: .named)))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                .fixedSize()
+                                .help(date.formatted(date: .long, time: .shortened))
+                        }
                         if model.isVideo && model.videoAd {
                             Label("Ad · muted", systemImage: "speaker.slash.fill")
                                 .font(.caption2.weight(.semibold))

@@ -35,6 +35,8 @@ final class BrowserModel: NSObject {
     @ObservationIgnored private var isYouTube = false
     private(set) var articleTitle = ""
     private(set) var siteName = ""
+    /// When the article or video was published, if known (shown in the player bar).
+    private(set) var articleDate: Date?
     private(set) var articleURL: URL?
     private(set) var loadingHost = ""
     private(set) var progress = 0.0
@@ -217,9 +219,17 @@ final class BrowserModel: NSObject {
         return history.items.contains { Self.readKey($0.url) == key }
     }
 
-    /// The same article whatever its tracking parameters: site and path.
+    /// The same article whatever its tracking parameters: site and path. A YouTube
+    /// video by its ID, which is in the query ("watch?v=…").
     static func readKey(_ url: URL) -> String {
-        (url.host() ?? "") + url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if let id = VideoPage.YouTube.videoID(in: url) { return "youtube/" + id }
+        return (url.host() ?? "") + url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    /// The publication date the sources already know for a page.
+    private static func knownDate(of page: URL) -> Date? {
+        let key = readKey(page)
+        return Feeds.shared.items.first { readKey($0.url) == key }?.date
     }
 
     func addToPlaylist(_ url: URL, title: String? = nil, site: String? = nil) {
@@ -235,6 +245,7 @@ final class BrowserModel: NSObject {
         speech.stop()
         isVideo = false
         isYouTube = false
+        articleDate = Self.knownDate(of: page)
         if let id = VideoPage.YouTube.videoID(in: page) { return startYouTube(page, videoID: id) }
         errorMessage = nil
         pendingPage = page
@@ -298,6 +309,7 @@ final class BrowserModel: NSObject {
         articleURL = webView.url ?? page
         articleTitle = article.kicker.flatMap { $0.isEmpty ? nil : "\($0) — \(article.title)" } ?? article.title
         language = article.lang
+        articleDate = articleDate ?? article.published.flatMap(Feeds.parseDate)
         siteName = article.siteName
         readerView.loadHTMLString(ReaderPage.html(for: article, fontSize: readerFontSize), baseURL: articleURL)
         // The page itself is no longer needed: stop its scripts and media.
@@ -338,6 +350,9 @@ final class BrowserModel: NSObject {
                 siteName = details.channel
             }
             if articleURL == page { history.record(page, title: articleTitle, site: siteName) }
+            if articleDate == nil, let date = await VideoPage.YouTube.publishDate(videoID: videoID), articleURL == page {
+                articleDate = date
+            }
         }
     }
 
@@ -353,6 +368,7 @@ final class BrowserModel: NSObject {
         articleURL = webView.url
         articleTitle = article.kicker.flatMap { $0.isEmpty ? nil : "\($0) — \(article.title)" } ?? article.title
         siteName = article.siteName
+        articleDate = articleDate ?? article.published.flatMap(Feeds.parseDate)
         blocks = []
         blockLengths = []
         isVideo = true
@@ -525,9 +541,10 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        // The video of a video page ended: on to the next article of the playlist.
+        // The video of a video page ended: on to the next article of the playlist
+        // (not at the end of an ad, which may play in the same player).
         if message.name == "video" {
-            if isVideo, message.body as? String == "ended" { articleFinished() }
+            if isVideo, !videoAd, message.body as? String == "ended" { articleFinished() }
             if message.body as? String == "close" { closeArticle() }
             return
         }

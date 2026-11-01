@@ -326,7 +326,7 @@ final class Feeds {
         return ArticleDetails(image: image, date: dateText.flatMap(parseDate))
     }
 
-    private nonisolated static func firstMatch(_ pattern: String, in text: String) -> String? {
+    nonisolated static func firstMatch(_ pattern: String, in text: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
               let result = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let range = Range(result.range(at: 1), in: text)
@@ -335,7 +335,7 @@ final class Feeds {
     }
 
     /// "2026-11-01T09:31:41-05:00", with or without fractions of a second, or a plain day.
-    private nonisolated static func parseDate(_ text: String) -> Date? {
+    nonisolated static func parseDate(_ text: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         for options: ISO8601DateFormatter.Options in [[.withInternetDateTime, .withFractionalSeconds], [.withInternetDateTime], [.withFullDate]] {
             formatter.formatOptions = options
