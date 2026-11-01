@@ -93,7 +93,7 @@ final class BrowserModel: NSObject {
         }
         speech.onWord = { [weak self] i, r in self?.readerJS("__bs.highlightWord(\(i),\(r.location),\(r.length))") }
         speech.onFinish = { [weak self] in self?.readerJS("__bs.clear()") }
-        speech.onComplete = { [weak self] in self?.playNextInPlaylist() }
+        speech.onComplete = { [weak self] in self?.articleFinished() }
         speech.onError = { [weak self] message in self?.errorMessage = message }
     }
 
@@ -159,6 +159,19 @@ final class BrowserModel: NSObject {
             isVideo = false
         }
         if !playNextInPlaylist() { phase = .empty }
+    }
+
+    /// The article was read (or the video watched) to the end: on to the next
+    /// one of the playlist, or else back to the home page after a moment.
+    private func articleFinished() {
+        guard !playNextInPlaylist() else { return }
+        let finished = articleURL
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            // Unless something else was started meanwhile.
+            guard articleURL == finished, phase == .ready, speech.state == .idle, !videoPlaying else { return }
+            closeArticle()
+        }
     }
 
     /// Starts the first article of the playlist and removes it from the list.
@@ -500,7 +513,7 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         // The video of a video page ended: on to the next article of the playlist.
         if message.name == "video" {
-            if isVideo, message.body as? String == "ended" { playNextInPlaylist() }
+            if isVideo, message.body as? String == "ended" { articleFinished() }
             return
         }
         guard let body = message.body as? [String: Any] else { return }

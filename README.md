@@ -47,7 +47,8 @@ the time left, the playback controls, speed and pauses, voice, and text size.
 - Share (or drag, or ⇧⌘V) an article while another is playing or paused: it goes to the **playlist**
   instead of interrupting ("Added to playlist").
 - When an article has been read to the end, the next one in the playlist starts by itself and is removed
-  from the list. ⏭ (or ⌥⌘↓, or closing the article) skips to the next one.
+  from the list. ⏭ (or ⌥⌘↓, or closing the article) skips to the next one. With nothing left to play, the
+app goes back to the home page.
 - The playlist button in the player bar (with the number of waiting articles) opens the list: drag to
   reorder, Delete or right-click to remove, *Clear* to empty it, double-click to play one now.
 - The playlist is kept when the app quits; the welcome screen offers to resume it.
