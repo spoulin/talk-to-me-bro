@@ -75,6 +75,11 @@ masqué. La barre du lecteur habituelle le pilote : position et temps restant, l
 site, s'il y en a). À la fin de la vidéo, l'article
 suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
 
+Les liens **YouTube** (vidéos, Shorts, `youtu.be`) passent par le lecteur intégrable de YouTube en mode
+confidentialité (`youtube-nocookie.com`, comme le Duck Player de DuckDuckGo) : pas de page YouTube autour,
+pas de cookies de suivi, titre et chaîne venant de YouTube, et la même barre du lecteur. Une chaîne YouTube
+ajoutée comme source utilise son flux RSS (ex. : `youtube.com/@chaine`).
+
 ## Historique
 
 Le bouton historique (🕘) de la barre d'outils liste les 50 derniers articles lus ; un clic relit

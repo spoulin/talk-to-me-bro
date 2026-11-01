@@ -6,7 +6,7 @@ import Foundation
 enum VideoPage {
     /// Address segments that mark a video page, e.g. ici.radio-canada.ca/info/videos/…
     static func looksLikeVideo(_ url: URL) -> Bool {
-        url.path().lowercased().split(separator: "/").contains { ["video", "videos", "vidéo", "vidéos", "watch"].contains($0.removingPercentEncoding ?? String($0)) }
+        url.path().lowercased().split(separator: "/").contains { ["video", "videos", "vidéo", "vidéos", "watch", "shorts"].contains($0.removingPercentEncoding ?? String($0)) }
     }
 
     /// Fewer words than this around a video: the page is the video.
@@ -121,4 +121,78 @@ enum VideoPage {
       return "ok";
     })()
     """
+}
+
+extension VideoPage {
+    /// YouTube links play in YouTube's embeddable player, in privacy mode
+    /// (youtube-nocookie.com, as DuckDuckGo's Duck Player does): no YouTube page
+    /// around it, no tracking cookies, and its official API drives the player bar.
+    enum YouTube {
+        /// watch?v=ID, youtu.be/ID, /shorts/ID, /embed/ID, /live/ID
+        static func videoID(in url: URL) -> String? {
+            guard let host = url.host()?.lowercased(), host.contains("youtube.com") || host == "youtu.be" else { return nil }
+            let parts = url.path().split(separator: "/").map(String.init)
+            let id: String?
+            if host == "youtu.be" {
+                id = parts.first
+            } else if let index = parts.firstIndex(where: { ["shorts", "embed", "live"].contains($0) }), index + 1 < parts.count {
+                id = parts[index + 1]
+            } else {
+                id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "v" }?.value
+            }
+            guard let id, id.range(of: "^[A-Za-z0-9_-]{6,20}$", options: .regularExpression) != nil else { return nil }
+            return id
+        }
+
+        /// The page loaded in place of youtube.com: the player over the whole window.
+        /// `language`: the player's interface language. Matching the listener's speech
+        /// language avoids translated titles and automatic subtitles.
+        static func playerPage(videoID: String, speed: Double, language: String) -> String {
+            """
+            <!doctype html><html><head><meta charset="utf-8">
+            <style>html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+            #player { position: fixed; inset: 0; width: 100vw; height: 100vh; }</style></head>
+            <body><div id="player"></div>
+            <script src="https://www.youtube.com/iframe_api"></script>
+            <script>
+            let player, ready = false;
+            function onYouTubeIframeAPIReady() {
+              player = new YT.Player("player", {
+                host: "https://www.youtube-nocookie.com", videoId: "\(videoID)",
+                playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1, hl: "\(language)" },
+                events: {
+                  onReady: e => { ready = true; e.target.setPlaybackRate(\(speed)); e.target.playVideo(); },
+                  onStateChange: e => { if (e.data === YT.PlayerState.ENDED) window.webkit.messageHandlers.video.postMessage("ended"); }
+                }
+              });
+            }
+            window.__bsVideo = {
+              state: () => JSON.stringify(ready ? { t: player.getCurrentTime() || 0, d: player.getDuration() || 0,
+                                                   p: player.getPlayerState() === 1 } : { t: 0, d: 0, p: false }),
+              toggle: () => { if (ready) player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); },
+              seek: t => { if (ready) player.seekTo(Math.max(0, t), true); },
+              skip: s => { if (ready) player.seekTo(Math.max(0, player.getCurrentTime() + s), true); },
+              rate: r => { if (ready) player.setPlaybackRate(r); }
+            };
+            </script></body></html>
+            """
+        }
+
+        static let state = "window.__bsVideo ? __bsVideo.state() : 'null'"
+        static let togglePlayback = "window.__bsVideo && __bsVideo.toggle()"
+        static func seek(to seconds: Double) -> String { "window.__bsVideo && __bsVideo.seek(\(seconds))" }
+        static func skip(by seconds: Double) -> String { "window.__bsVideo && __bsVideo.skip(\(seconds))" }
+        static func rate(_ speed: Double) -> String { "window.__bsVideo && __bsVideo.rate(\(speed))" }
+
+        /// Title and channel, from YouTube's oEmbed endpoint.
+        static func details(of url: URL) async -> (title: String, channel: String)? {
+            var components = URLComponents(string: "https://www.youtube.com/oembed")!
+            components.queryItems = [URLQueryItem(name: "url", value: url.absoluteString), URLQueryItem(name: "format", value: "json")]
+            struct OEmbed: Decodable { let title: String; let author_name: String }
+            guard let data = await Feeds.fetch(components.url!),
+                  let info = try? JSONDecoder().decode(OEmbed.self, from: data)
+            else { return nil }
+            return (info.title, info.author_name)
+        }
+    }
 }

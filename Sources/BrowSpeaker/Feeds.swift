@@ -51,6 +51,7 @@ final class Feeds {
     private(set) var isAdding = false
     private(set) var addError: String?
     @ObservationIgnored private var lastRefresh = Date.distantPast
+    @ObservationIgnored private var upgradeChecked = Set<UUID>()
 
     init() {
         sources = load("feedSources") ?? []
@@ -125,6 +126,17 @@ final class Feeds {
     }
 
     private func refresh(_ source: FeedSource) async {
+        var source = source
+        // A source read from its page (or added before feeds were found this way):
+        // look for a feed again, once per launch.
+        if source.mode == .page, upgradeChecked.insert(source.id).inserted,
+           let feed = await Self.discover(source.address, feedsOnly: true),
+           let index = sources.firstIndex(where: { $0.id == source.id }) {
+            sources[index].url = feed.url
+            sources[index].mode = .feed
+            sources[index].title = feed.title
+            source = sources[index]
+        }
         var fetched: [(url: URL, title: String, date: Date?, image: URL?)] = []
         var error: String?
         switch source.mode {
@@ -164,23 +176,24 @@ final class Feeds {
 
     /// 1. the address is a feed; 2. the page announces one; 3. a usual feed
     /// address answers; 4. otherwise, the page's article links.
-    private static func discover(_ address: URL) async -> FeedSource? {
+    private static func discover(_ address: URL, feedsOnly: Bool = false) async -> FeedSource? {
         // Typed without "www.": some sites only answer properly with it.
         if let host = address.host(), !host.hasPrefix("www."),
            var components = URLComponents(url: address, resolvingAgainstBaseURL: false) {
-            if let source = await discover(at: address) { return source }
+            if let source = await discover(at: address, feedsOnly: feedsOnly) { return source }
             components.host = "www." + host
-            return await components.url.asyncFlatMap { await discover(at: $0) }
+            return await components.url.asyncFlatMap { await discover(at: $0, feedsOnly: feedsOnly) }
         }
-        return await discover(at: address)
+        return await discover(at: address, feedsOnly: feedsOnly)
     }
 
-    private static func discover(at requested: URL) async -> FeedSource? {
+    private static func discover(at requested: URL, feedsOnly: Bool) async -> FeedSource? {
         guard let (data, address) = await fetchFollowingRedirects(requested) else { return nil }
         if let feed = FeedParser.parse(data), !feed.items.isEmpty {
             return FeedSource(address: address, url: address, mode: .feed, title: feed.title ?? address.host() ?? "")
         }
-        let html = String(decoding: data.prefix(600_000), as: UTF8.self)
+        // The whole page: YouTube announces its feed after 800 KB of scripts.
+        let html = String(decoding: data, as: UTF8.self)
         // "Radio-Canada.ca | Information, radio, télé…" → "Radio-Canada.ca"
         let pageTitle = matchTitle(in: html)?.components(separatedBy: " | ").first ?? address.host() ?? ""
         var candidates = announcedFeeds(in: html, base: address)
@@ -194,7 +207,7 @@ final class Feeds {
                 return FeedSource(address: address, url: candidate, mode: .feed, title: feed.title ?? pageTitle)
             }
         }
-        guard !(await PageLinks.extract(from: address)).isEmpty else { return nil }
+        guard !feedsOnly, !(await PageLinks.extract(from: address)).isEmpty else { return nil }
         return FeedSource(address: address, url: address, mode: .page, title: pageTitle)
     }
 

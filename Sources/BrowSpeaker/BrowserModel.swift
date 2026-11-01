@@ -29,6 +29,8 @@ final class BrowserModel: NSObject {
     private(set) var videoDuration = 0.0
     private(set) var videoPlaying = false
     @ObservationIgnored private var videoPolling: Task<Void, Never>?
+    /// A YouTube video, played in YouTube's own embeddable player (see `VideoPage.YouTube`).
+    @ObservationIgnored private var isYouTube = false
     private(set) var articleTitle = ""
     private(set) var siteName = ""
     private(set) var articleURL: URL?
@@ -75,6 +77,8 @@ final class BrowserModel: NSObject {
 
         controller.add(WeakScriptHandler(self), contentWorld: Self.readerWorld, name: "reader")
         webView.configuration.userContentController.add(WeakScriptHandler(self), contentWorld: .defaultClient, name: "video")
+        // The YouTube player page reports the end of the video from its own scripts.
+        webView.configuration.userContentController.add(WeakScriptHandler(self), contentWorld: .page, name: "video")
         webView.navigationDelegate = self
         readerView.navigationDelegate = self
         observation = webView.observe(\.estimatedProgress) { [weak self] wv, _ in
@@ -200,6 +204,8 @@ final class BrowserModel: NSObject {
     private func start(_ page: URL) {
         speech.stop()
         isVideo = false
+        isYouTube = false
+        if let id = VideoPage.YouTube.videoID(in: page) { return startYouTube(page, videoID: id) }
         errorMessage = nil
         pendingPage = page
         loadingHost = page.isFileURL ? page.lastPathComponent : (page.host() ?? page.absoluteString)
@@ -280,6 +286,37 @@ final class BrowserModel: NSObject {
         return false
     }
 
+    /// YouTube: straight to video mode, in the privacy player, without loading youtube.com.
+    private func startYouTube(_ page: URL, videoID: String) {
+        errorMessage = nil
+        pendingPage = nil
+        articleURL = page
+        articleTitle = String(localized: "YouTube video")
+        siteName = "YouTube"
+        blocks = []
+        blockLengths = []
+        isYouTube = true
+        isVideo = true
+        phase = .ready
+        webView.loadHTMLString(VideoPage.YouTube.playerPage(videoID: videoID, speed: speech.speed,
+                                                            language: String(AVVoices.systemLanguage.prefix(2))),
+                               baseURL: URL(string: "https://www.youtube-nocookie.com/"))
+        startVideoPolling()
+        Task {
+            if let details = await VideoPage.YouTube.details(of: page), articleURL == page {
+                articleTitle = details.title
+                siteName = details.channel
+            }
+            if articleURL == page { history.record(page, title: articleTitle, site: siteName) }
+        }
+    }
+
+    private var videoWorld: WKContentWorld { isYouTube ? .page : .defaultClient }
+
+    private func runVideo(_ siteScript: String, youtube youTubeScript: String) {
+        webView.evaluateJavaScript(isYouTube ? youTubeScript : siteScript, in: nil, in: videoWorld)
+    }
+
     /// Video mode: the page stays, with its player isolated over the window.
     private func showVideo(_ article: Article) {
         pendingPage = nil
@@ -302,6 +339,11 @@ final class BrowserModel: NSObject {
                 else { return }
             }
         }
+        startVideoPolling()
+    }
+
+    /// Follows the video's position and state for the player bar.
+    private func startVideoPolling() {
         videoTime = 0
         videoDuration = 0
         videoPlaying = false
@@ -309,7 +351,8 @@ final class BrowserModel: NSObject {
         videoPolling = Task { [weak self] in
             while let self, self.isVideo, !Task.isCancelled {
                 struct State: Decodable { var t: Double; var d: Double; var p: Bool }
-                if let json = await self.webView.evaluate(VideoPage.state, in: .defaultClient),
+                let script = self.isYouTube ? VideoPage.YouTube.state : VideoPage.state
+                if let json = await self.webView.evaluate(script, in: self.videoWorld),
                    let state = try? JSONDecoder().decode(State.self, from: Data(json.utf8)) {
                     self.videoTime = state.t
                     self.videoDuration = state.d
@@ -323,13 +366,13 @@ final class BrowserModel: NSObject {
 
     func videoSeek(to seconds: Double) {
         videoTime = seconds
-        webView.evaluateJavaScript(VideoPage.seek(to: seconds), in: nil, in: .defaultClient)
+        runVideo(VideoPage.seek(to: seconds), youtube: VideoPage.YouTube.seek(to: seconds))
     }
 
     /// The reading speed also applies to videos.
     func applyVideoSpeed() {
         guard isVideo else { return }
-        webView.evaluateJavaScript(VideoPage.rate(speech.speed), in: nil, in: .defaultClient)
+        runVideo(VideoPage.rate(speech.speed), youtube: VideoPage.YouTube.rate(speech.speed))
     }
 
     /// Once the article is displayed: split it into paragraphs and start reading.
@@ -359,7 +402,7 @@ final class BrowserModel: NSObject {
     // MARK: Playback
 
     func togglePlayPause() {
-        if isVideo { return webView.evaluateJavaScript(VideoPage.togglePlayback, in: nil, in: .defaultClient) }
+        if isVideo { return runVideo(VideoPage.togglePlayback, youtube: VideoPage.YouTube.togglePlayback) }
         switch speech.state {
         case .speaking: speech.pause()
         case .paused: speech.resume()
@@ -374,12 +417,12 @@ final class BrowserModel: NSObject {
     }
 
     func previous() {
-        if isVideo { return webView.evaluateJavaScript(VideoPage.skip(by: -15), in: nil, in: .defaultClient) }
+        if isVideo { return runVideo(VideoPage.skip(by: -15), youtube: VideoPage.YouTube.skip(by: -15)) }
         speech.hasBlocks ? speech.previous() : seek(to: max(position - 1, 0))
     }
 
     func next() {
-        if isVideo { return webView.evaluateJavaScript(VideoPage.skip(by: 15), in: nil, in: .defaultClient) }
+        if isVideo { return runVideo(VideoPage.skip(by: 15), youtube: VideoPage.YouTube.skip(by: 15)) }
         speech.hasBlocks ? speech.next() : seek(to: position + 1)
     }
 

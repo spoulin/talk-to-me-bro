@@ -72,6 +72,11 @@ hidden. The usual player bar drives it: position and time left, play/pause, ⟲ 
 next article (the site's own controls work too). The video starts by itself (after the site's ads, if any). When the video ends, the next article
 of the playlist starts. Video pages carry a "Video" badge in To Read.
 
+**YouTube** links (videos, Shorts, `youtu.be`) play in YouTube's embeddable player in privacy mode
+(`youtube-nocookie.com`, like DuckDuckGo's Duck Player): no YouTube page around it, no tracking cookies,
+title and channel from YouTube, and the same player bar. A YouTube channel added as a source uses its RSS
+feed (e.g. `youtube.com/@channel`).
+
 ## History
 
 The history button (🕘) in the toolbar lists the last 50 articles read; click one to read it again.
