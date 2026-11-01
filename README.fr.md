@@ -64,7 +64,8 @@ L'accueil affiche alors **À lire** : les derniers articles de toutes les source
 ancien, en cartes façon magazine (le plus récent en grand) ou en liste (⊞ / ☰). Les images viennent du
 flux, de la page, ou de l'image de partage de chaque article (`og:image`). Les articles déjà lus sont
 grisés et marqués « Lu » ; un article présent dans plusieurs sources n'apparaît qu'une fois. Clic pour écouter, ➕ pour ajouter à la playlist, *Tout écouter* pour
-mettre les non lus en file. Les sources s'actualisent au lancement et toutes les 30 minutes (↻ pour
+mettre les non lus en file. Des onglets montrent *Tout*, seulement les *Articles* ou les *Vidéos*, ou
+l'*Historique*. Les sources s'actualisent au lancement et toutes les 30 minutes (↻ pour
 actualiser).
 
 ## Pages vidéo

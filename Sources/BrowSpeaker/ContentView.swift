@@ -184,7 +184,7 @@ private struct WelcomeView: View {
                     ToReadSection(model: model)
                 }
 
-                if !model.history.items.isEmpty {
+                if feeds.sources.isEmpty && !model.history.items.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Recently read").font(.title3.weight(.semibold))
                         ForEach(model.history.items.prefix(5)) { item in
@@ -200,21 +200,57 @@ private struct WelcomeView: View {
     }
 }
 
-/// The latest articles of the user's sources, as magazine cards or a list.
+/// The latest articles of the user's sources, filtered by tab (all, articles,
+/// videos) as magazine cards or a list; and the history in its own tab.
 private struct ToReadSection: View {
+    enum Tab: String, CaseIterable, Identifiable {
+        case all, articles, videos, history
+        var id: Self { self }
+    }
+
     let model: BrowserModel
     private var feeds = Feeds.shared
     @AppStorage("toReadStyle") private var style = "cards"
+    @AppStorage("homeTab") private var tab = Tab.all
 
     init(model: BrowserModel) {
         self.model = model
     }
 
+    private static func isVideo(_ url: URL) -> Bool {
+        VideoPage.looksLikeVideo(url) || VideoPage.YouTube.videoID(in: url) != nil
+    }
+
+    private var items: [FeedItem] {
+        let latest = feeds.latest
+        switch tab {
+        case .all: return Array(latest.prefix(24))
+        case .articles: return Array(latest.filter { !Self.isVideo($0.url) }.prefix(24))
+        case .videos: return Array(latest.filter { Self.isVideo($0.url) }.prefix(24))
+        case .history:
+            // History entries as cards, with the picture of the same article in the sources when known.
+            let images = Dictionary(feeds.items.compactMap { item in item.image.map { (BrowserModel.readKey(item.url), $0) } },
+                                    uniquingKeysWith: { a, _ in a })
+            return model.history.items.map {
+                FeedItem(url: $0.url, title: $0.title, date: $0.date, sourceID: $0.id, sourceTitle: $0.site,
+                         image: images[BrowserModel.readKey($0.url)])
+            }
+        }
+    }
+
     var body: some View {
-        let items = Array(feeds.latest.prefix(24))
+        let items = self.items
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("To Read").font(.title3.weight(.semibold))
+                Picker("Show", selection: $tab) {
+                    Text("All").tag(Tab.all)
+                    Text("Articles").tag(Tab.articles)
+                    Text("Videos").tag(Tab.videos)
+                    Text("History").tag(Tab.history)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
                 if feeds.isRefreshing { ProgressView().controlSize(.small) }
                 Spacer()
                 Picker("Display", selection: $style) {
@@ -224,40 +260,48 @@ private struct ToReadSection: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
-                Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
-                    .help("Refresh")
-                    .disabled(feeds.isRefreshing)
-                Button {
-                    model.listenToAll(items.filter { !model.hasRead($0.url) }.map(\.url))
-                } label: { Label("Listen to All", systemImage: "text.badge.plus") }
-                    .help("Add the unread articles to the playlist and start listening")
-                    .disabled(items.allSatisfy { model.hasRead($0.url) })
-                SettingsLink { Image(systemName: "gearshape") }
-                    .help("Manage sources")
+                if tab == .history {
+                    Button("Clear") { model.history.clear() }
+                        .disabled(items.isEmpty)
+                } else {
+                    Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
+                        .help("Refresh")
+                        .disabled(feeds.isRefreshing)
+                    Button {
+                        model.listenToAll(items.filter { !model.hasRead($0.url) }.map(\.url))
+                    } label: { Label("Listen to All", systemImage: "text.badge.plus") }
+                        .help("Add the unread articles to the playlist and start listening")
+                        .disabled(items.allSatisfy { model.hasRead($0.url) })
+                    SettingsLink { Image(systemName: "gearshape") }
+                        .help("Manage sources")
+                }
             }
             if items.isEmpty {
-                Text("No articles yet.").foregroundStyle(.secondary)
+                Text(tab == .history ? "Articles you listen to will appear here." : "No articles yet.")
+                    .foregroundStyle(.secondary)
             } else if style == "cards" {
                 cards(items)
             } else {
                 ForEach(items) { item in
                     HStack {
-                        ArticleRow(title: item.title, detail: detail(of: item), isRead: model.hasRead(item.url)) {
+                        ArticleRow(title: item.title, detail: detail(of: item), isRead: tab != .history && model.hasRead(item.url),
+                                   isVideo: Self.isVideo(item.url)) {
                             model.play(item.url)
                         }
                         Button { model.addToPlaylist(item.url) } label: { Image(systemName: "plus.circle") }
                             .buttonStyle(.borderless)
                             .help("Add to Playlist")
                     }
+                    .contextMenu { menu(for: item) }
                 }
             }
         }
     }
 
-    /// The newest article with a picture as a large card, then a grid.
+    /// The newest unread article with a picture as a large card, then a grid.
     @ViewBuilder
     private func cards(_ items: [FeedItem]) -> some View {
-        let hero = items.first { $0.image != nil && !model.hasRead($0.url) }
+        let hero = tab == .history ? nil : items.first { $0.image != nil && !model.hasRead($0.url) }
         if let hero {
             card(hero, imageHeight: 260, titleFont: .title2.weight(.bold))
         }
@@ -270,9 +314,20 @@ private struct ToReadSection: View {
     }
 
     private func card(_ item: FeedItem, imageHeight: CGFloat, titleFont: Font) -> some View {
-        ArticleCard(item: item, detail: detail(of: item), isRead: model.hasRead(item.url),
+        ArticleCard(item: item, detail: detail(of: item), isRead: tab != .history && model.hasRead(item.url),
                     imageHeight: imageHeight, titleFont: titleFont,
                     play: { model.play(item.url) }, add: { model.addToPlaylist(item.url) })
+            .contextMenu { menu(for: item) }
+    }
+
+    @ViewBuilder
+    private func menu(for item: FeedItem) -> some View {
+        Button("Add to Playlist") { model.addToPlaylist(item.url) }
+        Button("Open in Browser") { NSWorkspace.shared.open(item.url) }
+        if tab == .history {
+            Divider()
+            Button("Remove from History", role: .destructive) { model.history.remove(item.sourceID) }
+        }
     }
 
     private func detail(of item: FeedItem) -> String {
@@ -299,7 +354,7 @@ private struct ArticleCard: View {
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(alignment: .bottomLeading) {
-                    if VideoPage.looksLikeVideo(item.url) {
+                    if VideoPage.looksLikeVideo(item.url) || VideoPage.YouTube.videoID(in: item.url) != nil {
                         Label("Video", systemImage: "play.rectangle.fill")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6).padding(.vertical, 3)
@@ -374,12 +429,13 @@ private struct ArticleRow: View {
     let title: String
     let detail: String
     let isRead: Bool
+    var isVideo = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack {
-                Image(systemName: isRead ? "checkmark.circle" : "play.circle").foregroundStyle(isRead ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+                Image(systemName: isRead ? "checkmark.circle" : isVideo ? "play.rectangle" : "play.circle").foregroundStyle(isRead ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).lineLimit(1).foregroundStyle(isRead ? .secondary : .primary)
                     Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)

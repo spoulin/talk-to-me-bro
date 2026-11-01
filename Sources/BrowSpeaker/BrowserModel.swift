@@ -190,7 +190,8 @@ final class BrowserModel: NSObject {
         return history.items.contains { Self.readKey($0.url) == key }
     }
 
-    private static func readKey(_ url: URL) -> String {
+    /// The same article whatever its tracking parameters: site and path.
+    static func readKey(_ url: URL) -> String {
         (url.host() ?? "") + url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 

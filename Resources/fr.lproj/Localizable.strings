@@ -155,3 +155,9 @@
 "Forward 15 seconds" = "Avancer de 15 secondes";
 "YouTube video" = "Vidéo YouTube";
 "Ad · muted" = "Pub · son coupé";
+
+/* Home tabs */
+"Show" = "Afficher";
+"All" = "Tout";
+"Articles" = "Articles";
+"Videos" = "Vidéos";

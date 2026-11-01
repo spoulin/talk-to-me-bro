@@ -62,7 +62,8 @@ links ("approximate" mode, no dates).
 The home screen then shows **To Read**: the latest articles of all sources, newest first, as magazine
 cards (the newest one large) or as a list (⊞ / ☰). Pictures come from the feed, from the page, or from
 each article's sharing image (`og:image`). Already read articles are dimmed and marked "Read"; an article
-listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones.
+listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones. Tabs show *All*,
+*Articles* or *Videos* only, or the *History*.
 Sources refresh at launch and every 30 minutes (↻ to refresh now).
 
 ## Video pages
