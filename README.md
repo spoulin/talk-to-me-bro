@@ -16,7 +16,16 @@ scripts/build-app.sh
 open "build/Talk to me Bro.app"
 ```
 
-Requires macOS 14+ and Xcode / Swift 6. To install, copy `build/Talk to me Bro.app` to `/Applications`.
+Requires macOS 14+ and Xcode / Swift 6.
+
+To install it in `/Applications` (it builds the app first; if the installed app is open, it quits it and
+opens it again):
+
+```bash
+npm run install-app
+```
+
+Without Node: `scripts/install-app.sh`.
 
 ## Usage
 
@@ -154,8 +163,8 @@ with a link, or with text that contains a link (that's what Dia sends: the addre
 
 - If the option doesn't appear: *System Settings › General › Login Items & Extensions › Sharing*
   (or *Share › Edit Extensions…*), then check "Read with Talk to me Bro".
-- After moving the app (for example to `/Applications`), open it once so macOS registers the extension
-  again.
+- After moving the app by hand, open it once so macOS registers the extension again
+  (`npm run install-app` does it for you).
 - Under the hood, the extension opens `browspeaker://read?url=<encoded address>`. You can use this link
   elsewhere too (Shortcuts, scripts, `open "browspeaker://read?url=…"`).
 

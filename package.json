@@ -1,0 +1,8 @@
+{
+  "name": "talk-to-me-bro",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "install-app": "scripts/install-app.sh"
+  }
+}

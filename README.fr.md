@@ -16,7 +16,16 @@ scripts/build-app.sh
 open "build/Talk to me Bro.app"
 ```
 
-Prérequis : macOS 14+, Xcode / Swift 6. Pour l'installer, copier `build/Talk to me Bro.app` dans `/Applications`.
+Prérequis : macOS 14+, Xcode / Swift 6.
+
+Pour l'installer dans `/Applications` (la commande construit d'abord l'app ; si l'app installée est
+ouverte, elle la quitte puis la rouvre) :
+
+```bash
+npm run install-app
+```
+
+Sans Node : `scripts/install-app.sh`.
 
 ## Utilisation
 
@@ -158,8 +167,8 @@ Dia : l'adresse en texte, sans `https://`).
 
 - Si l'option n'apparaît pas : *Réglages Système › Général › Ouverture et extensions › Partage*
   (ou *Partager › Modifier les extensions…*), puis cocher « Lire avec Talk to me Bro ».
-- Après avoir déplacé l'app (par exemple dans `/Applications`), l'ouvrir une fois pour que macOS
-  réenregistre l'extension.
+- Après avoir déplacé l'app à la main, l'ouvrir une fois pour que macOS réenregistre l'extension
+  (`npm run install-app` s'en charge).
 - Sous le capot, l'extension ouvre `browspeaker://read?url=<adresse encodée>`. On peut utiliser ce lien
   ailleurs (Raccourcis, scripts, `open "browspeaker://read?url=…"`).
 
