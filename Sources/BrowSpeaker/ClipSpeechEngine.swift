@@ -7,13 +7,13 @@ protocol ClipSynthesizer {
 }
 
 /// Engine for voices that produce audio clips (Piper, or a cloud service): each
-/// segment is synthesized, then played and followed by its silence, while the
-/// next ones are synthesized.
+/// segment is synthesized, then played through the voice effect and followed
+/// by its silence, while the next ones are synthesized.
 ///
 /// These services return audio without word timings, so the spoken word is
 /// estimated from the playback position.
 @MainActor
-final class ClipSpeechEngine: NSObject, SpeechEngine {
+final class ClipSpeechEngine: SpeechEngine {
     var events = SpeechEngineEvents()
     private let synthesizer: ClipSynthesizer
 
@@ -29,7 +29,7 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
     private var isPaused = false
     /// The next segment, when pause was pressed during the silence before it.
     private var pendingNext: (() -> Void)?
-    private var player: AVAudioPlayer?
+    private lazy var output = EffectPlayer()
     private var downloads: [Int: Task<Data, Error>] = [:]
     private var wordTimer: Timer?
 
@@ -43,7 +43,7 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
 
     func pause() {
         isPaused = true
-        player?.pause()
+        output.pause()
     }
 
     func resume() {
@@ -52,7 +52,12 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
             self.pendingNext = nil
             pendingNext()
         } else {
-            player?.play()
+            do {
+                try output.resume()
+            } catch {
+                stop()
+                events.failed(error)
+            }
         }
     }
 
@@ -62,8 +67,7 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
         downloads = [:]
         wordTimer?.invalidate()
         wordTimer = nil
-        player?.stop()
-        player = nil
+        output.finish()
         isPaused = false
         pendingNext = nil
     }
@@ -78,7 +82,10 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
     }
 
     private func play(_ i: Int, generation: Int) {
-        guard i < segments.count else { return events.finished() }
+        guard i < segments.count else {
+            output.finish()
+            return events.finished()
+        }
         index = i
         let current = audio(for: i)
         for ahead in (i + 1)..<min(i + 3, segments.count) { _ = audio(for: ahead) }
@@ -88,18 +95,16 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
                 guard generation == self.generation else { return }
                 downloads[i] = nil
                 let segment = segments[i]
-                let player = try AVAudioPlayer(data: data)
-                player.delegate = self
-                self.player = player
+                let clip = try EffectPlayer.buffer(from: data)
                 if segment.isFirstInBlock {
                     events.blockStarted(segment.block)
                     // Starting a paragraph can restart the reading (settings changed,
                     // click on a paragraph): this run is then over.
                     guard generation == self.generation else { return }
                 }
-                player.play()
-                if isPaused { player.pause() }
-                trackWords(of: segment, in: player)
+                try output.play(clip) { [weak self] in self?.clipFinished() }
+                if isPaused { output.pause() }
+                trackWords(of: segment)
             } catch {
                 guard generation == self.generation, !(error is CancellationError) else { return }
                 stop()
@@ -110,13 +115,13 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
 
     /// Estimates the spoken word from the playback position, weighting each
     /// word by its length.
-    private func trackWords(of segment: SpeechSegment, in player: AVAudioPlayer) {
+    private func trackWords(of segment: SpeechSegment) {
         let text = segment.spoken as NSString
         var words: [NSRange] = []
         text.enumerateSubstrings(in: NSRange(location: 0, length: text.length), options: .byWords) { _, range, _, _ in
             words.append(range)
         }
-        guard !words.isEmpty, player.duration > 0 else { return }
+        guard !words.isEmpty, output.duration > 0 else { return }
         let total = Double(words.reduce(0) { $0 + $1.length })
         var ends: [Double] = []
         var sum = 0.0
@@ -126,10 +131,10 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
         }
         var last = -1
         wordTimer?.invalidate()
-        wordTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self, weak player] _ in
+        wordTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, let player, player === self.player else { return }
-                let progress = player.currentTime / player.duration
+                guard let self, self.output.duration > 0 else { return }
+                let progress = self.output.currentTime / self.output.duration
                 let w = ends.firstIndex { $0 >= progress } ?? words.count - 1
                 guard w != last else { return }
                 last = w
@@ -139,9 +144,7 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
         }
     }
 
-    fileprivate func playerFinished(_ id: ObjectIdentifier) {
-        guard let player, ObjectIdentifier(player) == id else { return }
-        self.player = nil
+    private func clipFinished() {
         wordTimer?.invalidate()
         let generation = generation, next = index + 1, pause = segments[index].pauseAfter
         Task {
@@ -153,12 +156,5 @@ final class ClipSpeechEngine: NSObject, SpeechEngine {
                 play(next, generation: generation)
             }
         }
-    }
-}
-
-extension ClipSpeechEngine: AVAudioPlayerDelegate {
-    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        let id = ObjectIdentifier(player)
-        DispatchQueue.main.async { MainActor.assumeIsolated { self.playerFinished(id) } }
     }
 }

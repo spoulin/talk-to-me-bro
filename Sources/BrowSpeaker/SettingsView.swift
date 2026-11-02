@@ -11,6 +11,7 @@ struct SettingsView: View {
                 }
 
                 VoiceRolesSettings()
+                VoiceEffectSettings()
                 PiperSettings()
             }
             .formStyle(.grouped)
@@ -40,7 +41,7 @@ private struct VoiceRolesSettings: View {
         } header: {
             Text("Voices by type")
         } footer: {
-            Text("The text voice is chosen in the player bar. Changes apply from the next paragraph.")
+            Text("The text voice is chosen in the toolbar. Changes apply from the next paragraph.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -59,6 +60,29 @@ private struct VoiceRolesSettings: View {
                     Text(voice.label).tag(Optional(voice.key))
                 }
             }
+        }
+    }
+}
+
+/// An effect that gives the voice more body: warmth, a room, an echo…
+private struct VoiceEffectSettings: View {
+    @Bindable private var effects = VoiceEffects.shared
+
+    var body: some View {
+        Section {
+            Picker("Effect", selection: $effects.effect) {
+                ForEach(VoiceEffect.allCases) { Text($0.label).tag($0) }
+            }
+            LabeledContent("Amount") {
+                Slider(value: $effects.amount, in: 0...1)
+            }
+            .disabled(effects.effect == .none)
+        } header: {
+            Text("Voice effect")
+        } footer: {
+            Text("Gives the voice more body. Piper voices only; changes are heard right away.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

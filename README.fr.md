@@ -26,7 +26,8 @@ Pour ouvrir un article :
 - ou copier un lien, puis ⇧⌘V.
 
 La lecture démarre toute seule. La barre du bas montre la progression (cliquer ou glisser pour sauter
-à un paragraphe), le temps restant, les commandes, la vitesse et les pauses, la voix et la taille du texte.
+à un paragraphe), le temps restant, les commandes et ce qui suit. La barre d'outils regroupe la playlist,
+la vitesse et les pauses, la voix et la taille du texte.
 
 | Action | Raccourci |
 | --- | --- |
@@ -49,7 +50,7 @@ La lecture démarre toute seule. La barre du bas montre la progression (cliquer 
   **playlist** au lieu de couper la lecture (« Ajouté à la playlist »).
 - Quand un article est lu jusqu'au bout, le suivant démarre tout seul et sort de la liste. ⏭ (ou ⌥⌘↓)
   passe au suivant ; ✕ ou Échap revient à l'accueil et garde la playlist. Quand il n'y a plus rien à écouter, l'app revient à l'accueil.
-- Le bouton playlist de la barre du lecteur (avec le nombre d'articles en attente) ouvre la liste :
+- Le bouton playlist de la barre d'outils (avec le nombre d'articles en attente) ouvre la liste :
   glisser pour réordonner, Suppr ou clic droit pour retirer, *Vider* pour tout enlever, double-clic pour
   écouter un article tout de suite.
 - La playlist est conservée quand on quitte l'app ; l'écran d'accueil propose de la reprendre.
@@ -76,7 +77,7 @@ actualiser).
 Certains « articles » ne sont qu'une vidéo (ex. : `ici.radio-canada.ca/info/videos/…`). Quand une page a
 une adresse de vidéo, ou très peu de texte autour d'une grande vidéo, l'app passe en **mode vidéo** : la
 page d'origine est affichée avec son lecteur isolé, centré à ses proportions dans la fenêtre, et le reste
-masqué. La barre du lecteur habituelle le pilote : position et temps restant, lecture/pause,
+masqué. La barre du lecteur et la barre d'outils habituelles le pilotent : position et temps restant, lecture/pause,
 ⟲ 15 s / ⟳ 15 s, vitesse, article suivant (les commandes du site marchent aussi). La vidéo démarre toute seule ; les pubs du site, s'il y en a,
 sont jouées sans le son (« Pub · son coupé » dans la barre) et le son revient pour la vidéo. À la fin de la vidéo, l'article
 suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
@@ -116,7 +117,7 @@ celui en cours.
 
 ## Choix des voix
 
-Deux moteurs, choisis dans le menu des voix de la barre du lecteur ; tout reste sur le Mac :
+Deux moteurs, choisis dans le menu des voix de la barre d'outils ; tout reste sur le Mac :
 
 | Moteur | Qualité | Coût / compte | Confidentialité |
 | --- | --- | --- | --- |
@@ -134,13 +135,15 @@ Si Piper échoue, la lecture continue avec la voix macOS. Ajouter un service de 
 1. **Réglages** (⌘,) → *Installer Piper* (environ 200 Mo ; nécessite Python 3.9+, par exemple
    `brew install python` ou python.org).
 2. *Voix à télécharger* → choisir une voix (30 à 80 Mo), par exemple Siwis ou Tom.
-3. La voix apparaît dans le menu des voix de la barre du lecteur.
+3. La voix apparaît dans le menu des voix de la barre d'outils.
 
 - Tout est installé dans `~/Library/Application Support/local.browspeaker/piper` (environnement Python
   à part, voix, journal `piper.log`) ; *Désinstaller Piper* supprime ce dossier.
 - Un petit serveur Piper local (127.0.0.1) garde la voix chargée pendant la lecture ; il s'arrête avec l'app.
 - En français, Piper n'a que des voix de France (pas de voix québécoise).
 - Le mot surligné est estimé (Piper ne donne pas le minutage des mots), le paragraphe est exact.
+- **Effet sur la voix** (Réglages, onglet Voix) : Chaleur, Pièce, Studio, Salle, Cathédrale ou Écho,
+  avec son intensité, pour donner du corps à la voix. Les changements s'entendent tout de suite.
 
 ## Partager vers Talk to me Bro
 

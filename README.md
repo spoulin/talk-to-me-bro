@@ -26,7 +26,8 @@ To open an article:
 - or copy a link, then press ⇧⌘V.
 
 Playback starts on its own. The bottom bar shows the progress (click or drag to jump to a paragraph),
-the time left, the playback controls, speed and pauses, voice, and text size.
+the time left, the playback controls, and what plays next. The toolbar holds the playlist, speed and
+pauses, voice, and text size.
 
 | Action | Shortcut |
 | --- | --- |
@@ -50,7 +51,7 @@ the time left, the playback controls, speed and pauses, voice, and text size.
 - When an article has been read to the end, the next one in the playlist starts by itself and is removed
   from the list. ⏭ (or ⌥⌘↓) skips to the next one; ✕ or Esc goes back to the home page and keeps the playlist. With nothing left to play, the
 app goes back to the home page.
-- The playlist button in the player bar (with the number of waiting articles) opens the list: drag to
+- The playlist button in the toolbar (with the number of waiting articles) opens the list: drag to
   reorder, Delete or right-click to remove, *Clear* to empty it, double-click to play one now.
 - The playlist is kept when the app quits; the welcome screen offers to resume it.
 
@@ -75,7 +76,7 @@ Sources refresh at launch and every 30 minutes (↻ to refresh now).
 Some "articles" are only a video (e.g. `ici.radio-canada.ca/info/videos/…`). When an opened page has a
 video address, or very little text around a large video, the app switches to **video mode**: the original
 page is shown with its player isolated, centered at its proportions over the window, and everything else
-hidden. The usual player bar drives it: position and time left, play/pause, ⟲ 15 s / ⟳ 15 s, speed,
+hidden. The usual player bar and toolbar drive it: position and time left, play/pause, ⟲ 15 s / ⟳ 15 s, speed,
 next article (the site's own controls work too). The video starts by itself; the site's ads, if any, are muted ("Ad · muted" in the bar) and the sound
 comes back for the video. When the video ends, the next article
 of the playlist starts. Video pages carry a "Video" badge in To Read.
@@ -112,7 +113,7 @@ current one.
 
 ## Voices
 
-Two engines, chosen from the voice menu in the player bar; everything stays on the Mac:
+Two engines, chosen from the voice menu in the toolbar; everything stays on the Mac:
 
 | Engine | Quality | Cost / account | Privacy |
 | --- | --- | --- | --- |
@@ -130,13 +131,15 @@ is in the first commit of the git history).
 1. **Settings** (⌘,) → *Install Piper* (about 200 MB; requires Python 3.9+, for example
    `brew install python` or python.org).
 2. *Voices to download* → choose a voice (30 to 80 MB).
-3. The voice appears in the voice menu of the player bar.
+3. The voice appears in the voice menu of the toolbar.
 
 - Everything is installed in `~/Library/Application Support/local.browspeaker/piper` (a separate Python
   environment, the voices, and a `piper.log` log); *Uninstall Piper* deletes that folder.
 - A small local Piper server (127.0.0.1) keeps the voice loaded while reading; it stops with the app.
 - The voice list follows the system speech language. In French, Piper only has voices from France.
 - The highlighted word is estimated (Piper doesn't report word timings); the paragraph is exact.
+- **Voice effect** (Settings, Voices tab): Warmth, Room, Studio, Hall, Cathedral or Echo, with its
+  amount, to give the voice more body. Changes are heard right away.
 
 ## Share to Talk to me Bro
 

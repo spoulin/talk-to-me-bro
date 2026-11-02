@@ -110,7 +110,20 @@
 "Same as text" = "Même voix que le texte";
 "Announce captions (“Caption: …”)" = "Annoncer les légendes (« Légende : … »)";
 "Caption:" = "Légende :";
-"The text voice is chosen in the player bar. Changes apply from the next paragraph." = "La voix du texte se choisit dans la barre du lecteur. Les changements s’appliquent dès le paragraphe suivant.";
+"The text voice is chosen in the toolbar. Changes apply from the next paragraph." = "La voix du texte se choisit dans la barre d’outils. Les changements s’appliquent dès le paragraphe suivant.";
+
+/* Voice effect */
+"Voice effect" = "Effet sur la voix";
+"Effect" = "Effet";
+"Amount" = "Intensité";
+"No effect" = "Aucun effet";
+"Warmth" = "Chaleur";
+"Room" = "Pièce";
+"Studio" = "Studio";
+"Hall" = "Salle";
+"Cathedral" = "Cathédrale";
+"Echo" = "Écho";
+"Gives the voice more body. Piper voices only; changes are heard right away." = "Donne du corps à la voix. Voix Piper seulement ; les changements s’entendent tout de suite.";
 
 /* History */
 "History" = "Historique";
