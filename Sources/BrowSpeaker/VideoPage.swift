@@ -136,6 +136,21 @@ enum VideoPage {
     /// "true" while an ad plays (and is muted).
     static let adPlaying = "String(!!window.__bsAdActive)"
 
+    /// While a video plays, WebKit answers the media keys itself (⏯, seeking),
+    /// not the app: ⏭ must be asked of the page, in every frame since the
+    /// player is often in an iframe. Players set their own actions when they
+    /// start, so it is claimed back each time.
+    static let nextTrack = """
+    (() => {
+      if (!navigator.mediaSession) return;
+      const claim = () => {
+        try { navigator.mediaSession.setActionHandler("nexttrack", () => window.webkit.messageHandlers.video.postMessage("next")); } catch {}
+      };
+      claim();
+      document.addEventListener("playing", claim, true);
+    })();
+    """
+
     /// Whether any video of the page is really playing, ads included.
     static let anythingPlaying = "String([...document.querySelectorAll('video')].some(v => !v.paused && v.currentTime > 0))"
 

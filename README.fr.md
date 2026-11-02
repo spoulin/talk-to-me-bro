@@ -33,6 +33,7 @@ la vitesse et les pauses, la voix et la taille du texte.
 | --- | --- |
 | Lire / Pause | espace (dans l'article) ou ⌥⌘P |
 | Paragraphe précédent / suivant | ← / → (dans l'article) ou ⌥⌘← / ⌥⌘→ |
+| Article suivant de la playlist | ⌥⌘↓ |
 | Arrêter | ⌥⌘. |
 | Écouter le lien copié | ⇧⌘V |
 | Retour à l'accueil (la playlist est gardée) | Échap ou ✕ |
@@ -41,6 +42,9 @@ la vitesse et les pauses, la voix et la taille du texte.
 
 - Pendant la lecture, cliquer un paragraphe y saute ; ⌥-clic démarre la lecture à ce paragraphe.
 - Les liens de l'article s'ouvrent dans le navigateur habituel.
+- Les **touches multimédia** marchent même quand l'app est en arrière-plan : ⏯ lit ou met en pause,
+  ⏭ passe à l'article suivant de la playlist. Elles marchent aussi depuis les écouteurs, le Centre de
+  contrôle ou les boutons Multimédia d'un Stream Deck, et l'article ou la vidéo s'affiche dans À l'écoute.
 - **Pauses** (menu de la vitesse) : Aucune, Courtes, Moyennes (par défaut) ou Longues, après chaque
   paragraphe et, plus courtes, après chaque phrase, pour un débit moins monotone.
 

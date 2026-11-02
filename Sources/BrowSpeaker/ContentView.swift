@@ -66,7 +66,10 @@ struct ContentView: View {
             openDropped(providers)
         }
         .focusedSceneValue(\.browser, model)
-        .onDisappear { model.speech.stop() }
+        .onDisappear {
+            model.speech.stop()
+            NowPlaying.shared.forget(model)
+        }
         .onOpenURL { model.handleOpenURL($0) }
         // Sources refresh at launch, then every 30 minutes.
         .task {

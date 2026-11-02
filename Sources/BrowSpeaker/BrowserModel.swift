@@ -67,6 +67,8 @@ final class BrowserModel: NSObject {
         config.applicationNameForUserAgent = "Version/18.0 Safari/605.1.15"
         // The player bar's ▶︎ starts videos from a script, not a click in the page.
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.userContentController.addUserScript(WKUserScript(source: VideoPage.nextTrack, injectionTime: .atDocumentEnd,
+                                                                forMainFrameOnly: false, in: .defaultClient))
         webView = WKWebView(frame: .zero, configuration: config)
 
         let readerConfig = WKWebViewConfiguration()
@@ -242,6 +244,7 @@ final class BrowserModel: NSObject {
     }
 
     private func start(_ page: URL) {
+        NowPlaying.shared.follow(self)
         speech.stop()
         isVideo = false
         isYouTube = false
@@ -453,6 +456,7 @@ final class BrowserModel: NSObject {
     // MARK: Playback
 
     func togglePlayPause() {
+        NowPlaying.shared.follow(self)
         if isVideo { return runVideo(VideoPage.togglePlayback, youtube: VideoPage.YouTube.togglePlayback) }
         switch speech.state {
         case .speaking: speech.pause()
@@ -546,6 +550,8 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
         if message.name == "video" {
             if isVideo, !videoAd, message.body as? String == "ended" { articleFinished() }
             if message.body as? String == "close" { closeArticle() }
+            // ⏭ while a video plays (see `VideoPage.nextTrack`); like the menu, only with a playlist.
+            if isVideo, message.body as? String == "next", !playlist.items.isEmpty { nextArticle() }
             return
         }
         guard let body = message.body as? [String: Any] else { return }

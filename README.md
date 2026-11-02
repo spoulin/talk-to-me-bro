@@ -33,6 +33,7 @@ pauses, voice, and text size.
 | --- | --- |
 | Play / Pause | Space (in the article) or ⌥⌘P |
 | Previous / next paragraph | ← / → (in the article) or ⌥⌘← / ⌥⌘→ |
+| Next article of the playlist | ⌥⌘↓ |
 | Stop | ⌥⌘. |
 | Listen to the copied link | ⇧⌘V |
 | Back to the home page (the playlist is kept) | Esc or ✕ |
@@ -41,6 +42,9 @@ pauses, voice, and text size.
 
 - While reading, click a paragraph to jump to it; ⌥-click always starts reading from it.
 - Links in the article open in your usual browser.
+- **Media keys** work even when the app is in the background: ⏯ plays or pauses, ⏭ goes to the next
+  article of the playlist. They also work from headphones, Control Center, or a Stream Deck's
+  Multimedia buttons, and the article or video shows in Now Playing.
 - **Pauses** (speed menu): None, Short, Medium (default) or Long, after each paragraph and, shorter,
   after each sentence, so the flow is less monotonous.
 
