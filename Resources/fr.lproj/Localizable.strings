@@ -157,6 +157,10 @@
 "Add the unread articles to the playlist and start listening" = "Ajouter les articles non lus à la playlist et commencer l’écoute";
 "Manage sources" = "Gérer les sources";
 "No articles yet." = "Aucun article pour l’instant.";
+"No unread articles." = "Aucun article non lu.";
+"Hide Read" = "Masquer les lus";
+"Hide read articles" = "Masquer les articles lus";
+"Show read articles" = "Afficher les articles lus";
 
 /* Magazine view */
 "Display" = "Affichage";

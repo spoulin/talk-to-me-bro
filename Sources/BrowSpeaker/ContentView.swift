@@ -226,6 +226,7 @@ private struct ToReadSection: View {
     @AppStorage("homeTab") private var tab = Tab.all
     /// "Listen to All" order: newest first (as on screen) or oldest first (chronological).
     @AppStorage("listenOrder") private var oldestFirst = false
+    @AppStorage("hideRead") private var hidesRead = false
 
     init(model: BrowserModel) {
         self.model = model
@@ -238,9 +239,9 @@ private struct ToReadSection: View {
     private var items: [FeedItem] {
         let latest = feeds.latest
         switch tab {
-        case .all: return Array(latest.prefix(24))
-        case .articles: return Array(latest.filter { !Self.isVideo($0.url) }.prefix(24))
-        case .videos: return Array(latest.filter { Self.isVideo($0.url) }.prefix(24))
+        case .all: return shown(latest)
+        case .articles: return shown(latest.filter { !Self.isVideo($0.url) })
+        case .videos: return shown(latest.filter { Self.isVideo($0.url) })
         case .playlist: return []
         case .history:
             // History entries as cards, with the picture of the same article in the sources when known.
@@ -251,6 +252,11 @@ private struct ToReadSection: View {
                          image: images[BrowserModel.readKey($0.url)])
             }
         }
+    }
+
+    /// The 24 newest; once read articles are hidden, the 24 newest unread.
+    private func shown(_ items: [FeedItem]) -> [FeedItem] {
+        Array((hidesRead ? items.filter { !model.hasRead($0.url) } : items).prefix(24))
     }
 
     var body: some View {
@@ -290,6 +296,12 @@ private struct ToReadSection: View {
                     Button("Clear") { model.history.clear() }
                         .disabled(items.isEmpty)
                 } else {
+                    // A plain button like ↻: only the eye changes (crossed out while read articles are hidden).
+                    Button { hidesRead.toggle() } label: {
+                        Label("Hide Read", systemImage: hidesRead ? "eye.slash" : "eye")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help(hidesRead ? "Show read articles" : "Hide read articles")
                     Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
                         .help("Refresh")
                         .disabled(feeds.isRefreshing)
@@ -321,7 +333,7 @@ private struct ToReadSection: View {
                     .frame(height: min(max(CGFloat(model.playlist.items.count) * 54 + 60, 140), 560))
                     .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
             } else if items.isEmpty {
-                Text(tab == .history ? "Articles you listen to will appear here." : "No articles yet.")
+                Text(tab == .history ? "Articles you listen to will appear here." : hidesRead ? "No unread articles." : "No articles yet.")
                     .foregroundStyle(.secondary)
             } else if style == "cards" {
                 cards(items)
