@@ -32,5 +32,12 @@ ditto "$APP" "$DEST"
 "$LSREGISTER" -f "$DEST"
 pluginkit -a "$DEST/Contents/PlugIns/BrowSpeakerShare.appex"
 
-if $REOPEN; then open "$DEST"; fi
+if $REOPEN; then
+    # Right after the old copy quits, `open` can do nothing: check it started, or try again.
+    for _ in 1 2 3; do
+        open "$DEST"
+        for _ in {1..25}; do pgrep -qf "$RUN" && break 2; sleep 0.2; done
+    done
+    pgrep -qf "$RUN" || echo "Talk to me Bro didn't reopen: open it from /Applications." >&2
+fi
 echo "✓ $DEST"
