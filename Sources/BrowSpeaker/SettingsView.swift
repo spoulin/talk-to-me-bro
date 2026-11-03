@@ -22,6 +22,9 @@ struct SettingsView: View {
 
             SourcesSettings()
                 .tabItem { Label("Sources", systemImage: "dot.radiowaves.up.forward") }
+
+            SlideshowSettings()
+                .tabItem { Label("Slideshow", systemImage: "play.rectangle.on.rectangle") }
         }
         .frame(width: 580, height: 540)
     }
@@ -87,9 +90,39 @@ private struct VoiceEffectSettings: View {
     }
 }
 
+/// The home page's slideshow: how long each article stays, and how it gives way to the next.
+private struct SlideshowSettings: View {
+    @AppStorage("slideshowSeconds") private var seconds = 10
+    @AppStorage("slideshowTransition") private var transition = Slideshow.Transition.fade
+    @AppStorage("slideshowKenBurns") private var kenBurns = false
+    @AppStorage("slideshowTitleAfter") private var titleAfter = false
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Time per article", selection: $seconds) {
+                    ForEach(Slideshow.durations, id: \.self) { Text("\($0) seconds").tag($0) }
+                }
+                Picker("Transition", selection: $transition) {
+                    ForEach(Slideshow.Transition.allCases) { Text($0.label).tag($0) }
+                }
+            } footer: {
+                Text("Random takes another transition for each article.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                Toggle("Slow zoom on the pictures (Ken Burns effect)", isOn: $kenBurns)
+                Toggle("Show the title just after the picture", isOn: $titleAfter)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
 /// Sites and RSS feeds whose latest articles are listed on the home screen.
 private struct SourcesSettings: View {
-    private var feeds = Feeds.shared
+    @Bindable private var feeds = Feeds.shared
     @State private var address = ""
 
     var body: some View {
@@ -141,6 +174,16 @@ private struct SourcesSettings: View {
                     Text("No sources yet.").foregroundStyle(.secondary)
                 }
             }
+
+            Picker("Refresh sources", selection: $feeds.refreshMinutes) {
+                Text("Every 5 minutes").tag(5)
+                Text("Every 15 minutes").tag(15)
+                Text("Every 30 minutes").tag(30)
+                Text("Every hour").tag(60)
+                Text("Every 2 hours").tag(120)
+                Text("At launch only").tag(0)
+            }
+            .fixedSize()
         }
         .padding()
     }

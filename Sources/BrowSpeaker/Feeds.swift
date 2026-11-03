@@ -52,7 +52,6 @@ struct FeedItem: Codable, Identifiable, Hashable {
 final class Feeds {
     static let shared = Feeds()
     private static let itemsPerSource = 30
-    static let refreshInterval: TimeInterval = 30 * 60
     static let log = Logger(subsystem: "local.browspeaker", category: "feeds")
 
     private(set) var sources: [FeedSource] = [] {
@@ -62,9 +61,14 @@ final class Feeds {
         didSet { save(items, as: "feedItems") }
     }
     private(set) var isRefreshing = false
+    /// Minutes between automatic refreshes; 0: only at launch (and with ↻).
+    var refreshMinutes = UserDefaults.standard.object(forKey: "feedRefreshMinutes") as? Int ?? 30 {
+        didSet { UserDefaults.standard.set(refreshMinutes, forKey: "feedRefreshMinutes") }
+    }
     private(set) var isAdding = false
     private(set) var addError: String?
-    @ObservationIgnored private var lastRefresh = Date.distantPast
+    /// When the sources were last refreshed (shown on the home screen).
+    private(set) var lastRefresh: Date?
     private static let feedCheckInterval: TimeInterval = 7 * 24 * 3600
     /// Bump when discovery finds feeds it could not before (2: feed listing pages).
     private static let feedCheckRevision = 2
@@ -128,18 +132,21 @@ final class Feeds {
     // MARK: Refresh
 
     func refreshIfNeeded() async {
-        if Date().timeIntervalSince(lastRefresh) > Self.refreshInterval { await refreshAll() }
+        let interval = refreshMinutes > 0 ? TimeInterval(refreshMinutes * 60) : .infinity
+        if let lastRefresh, Date().timeIntervalSince(lastRefresh) < interval { return }
+        await refreshAll()
     }
 
     func refreshAll() async {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        lastRefresh = Date()
         // All at once: the wait is the slowest source, not the sum.
         await withTaskGroup(of: Void.self) { group in
             for source in sources { group.addTask { await self.refresh(source) } }
         }
+        // Once done: while it runs, ↻ keeps showing the time of the articles on screen.
+        lastRefresh = Date()
     }
 
     private func refresh(_ source: FeedSource) async {
@@ -182,7 +189,7 @@ final class Feeds {
         let now = Date()
         var fresh = fetched.prefix(Self.itemsPerSource).map { entry -> FeedItem in
             let old = previous[entry.url]
-            return FeedItem(url: entry.url, title: entry.title, date: entry.date ?? old?.date, sourceID: source.id,
+            return FeedItem(url: entry.url, title: entry.title, date: Self.believable(entry.date) ?? Self.believable(old?.date), sourceID: source.id,
                             sourceTitle: sources[index].title, image: entry.image ?? old?.image,
                             firstSeen: old?.firstSeen ?? now, detailsChecked: old?.detailsChecked)
         }
@@ -198,12 +205,14 @@ final class Feeds {
         }
         for i in fresh.indices where missing.contains(fresh[i].url) {
             let details = found[fresh[i].url]
-            fresh[i].date = fresh[i].date ?? details?.date
+            fresh[i].date = fresh[i].date ?? Self.believable(details?.date)
             fresh[i].image = fresh[i].image ?? details?.image
             fresh[i].detailsChecked = true
         }
-        // Still no date: borrow the one of the previous article on the page (or
-        // the next one), since a page lists its articles from newest to oldest.
+        // Still no date: the day in the article's address, or else borrow the one of
+        // the previous article on the page (or the next one), since a page lists its
+        // articles from newest to oldest.
+        for i in fresh.indices where fresh[i].date == nil { fresh[i].date = Self.dateInAddress(fresh[i].url) }
         var previousDate = fresh.first { $0.date != nil }?.date
         for i in fresh.indices {
             if let date = fresh[i].date { previousDate = date } else { fresh[i].estimatedDate = previousDate }
@@ -342,6 +351,21 @@ final class Feeds {
             if let date = formatter.date(from: text.trimmingCharacters(in: .whitespaces)) { return date }
         }
         return nil
+    }
+
+    /// A date from a feed or a page, unless it's in the future: some sites get the
+    /// year wrong (Oct 27, 2027 for an article of Oct 27, 2026). Less than an hour
+    /// ahead is a clock or a time zone slightly off: then it's now.
+    nonisolated static func believable(_ date: Date?) -> Date? {
+        guard let date, date.timeIntervalSinceNow < 3600 else { return nil }
+        return min(date, Date())
+    }
+
+    /// The day in an article's address: ".../2026/10/27/title" or ".../2026-10-27/title".
+    nonisolated static func dateInAddress(_ url: URL) -> Date? {
+        guard let day = firstMatch("/(20\\d\\d[/-]\\d\\d[/-]\\d\\d)/", in: url.path()) else { return nil }
+        let parts = day.split(whereSeparator: { $0 == "/" || $0 == "-" }).compactMap { Int($0) }
+        return believable(Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])))
     }
 
     private static func matchTitle(in html: String) -> String? {

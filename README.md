@@ -36,7 +36,11 @@ To open an article:
 
 Playback starts on its own. The bottom bar shows the progress (click or drag to jump to a paragraph),
 the time left, the playback controls, and what plays next. The toolbar holds the playlist, speed and
-pauses, voice, and text size.
+pauses, volume (🔊), voice, and text size.
+
+The volume is a share of the Mac's volume, kept apart for reading and for videos: set once, going from a
+YouTube video to an article no longer calls for the volume keys. With a Piper voice a change is heard at
+once; with a macOS voice, from the next paragraph.
 
 | Action | Shortcut |
 | --- | --- |
@@ -78,11 +82,19 @@ links ("approximate" mode, no dates).
 
 The home screen then shows **To Read**: the latest articles of all sources, newest first (articles
 without a date in their source get it from the article itself), as magazine
-cards (the newest one large) or as a list (⊞ / ☰). Pictures come from the feed, from the page, or from
+cards (the newest one large) or as a list (⊞ / ▤). Pictures come from the feed, from the page, or from
 each article's sharing image (`og:image`). Already read articles are dimmed and marked "Read" (👁 to hide
-them; the choice is remembered); an article listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones (▾ to listen oldest first instead; the choice is remembered). Tabs show *All*,
-*Articles* or *Videos* only, the *Playlist*, or the *History*; video posts have a 🎥 mark.
-Sources refresh at launch and every 30 minutes (↻ to refresh now).
+them; the choice is remembered); an article listed by several sources appears once. Click to listen, ➕ to add to the playlist, *Listen to All* to queue the unread ones (▾ to listen oldest first instead; the choice is remembered). Tabs (icons, named on hover) show *All*,
+*Articles* or *Videos* only, the *Playlist* (with its count), or the *History*; video posts have a 🎥 mark.
+Sources refresh at launch, then every 30 minutes by default (from every 5 minutes to at launch only, in
+*Settings › Sources*; ↻ to refresh now). The ↻ button shows the time of the last refresh.
+
+The slideshow button shows the tab's articles one at a time, picture and title, a few seconds each (5 to 60,
+remembered), round and round: new articles join it as the sources refresh. Click a slide (or press Return) to
+listen to it; at its end, or on Esc, the slideshow comes back, on the next article. ← → to move, Space to
+pause, Esc to close; the controls show when the mouse moves. In *Settings › Slideshow*: the time per article,
+the transition (crossfade, fade through black, slide, zoom, blur, wipe, or random), a slow zoom on the pictures
+(Ken Burns effect), and the title rising just after the picture.
 
 ## Video pages
 
@@ -90,7 +102,7 @@ Some "articles" are only a video (e.g. `ici.radio-canada.ca/info/videos/…`). W
 video address, or very little text around a large video, the app switches to **video mode**: the original
 page is shown with its player isolated, centered at its proportions over the window, and everything else
 hidden. The usual player bar and toolbar drive it: position and time left, play/pause, ⟲ 15 s / ⟳ 15 s, speed,
-next article (the site's own controls work too). The video starts by itself; the site's ads, if any, are muted ("Ad · muted" in the bar) and the sound
+volume, next article (the site's own controls work too). The video starts by itself; the site's ads, if any, are muted ("Ad · muted" in the bar) and the sound
 comes back for the video. When the video ends, the next article
 of the playlist starts. Video pages carry a "Video" badge in To Read.
 
@@ -186,6 +198,8 @@ reading starts.
 - `BrowserModel`: a hidden `WKWebView` loads the page, a second one shows the clean article.
 - The article is extracted with [Mozilla Readability](https://github.com/mozilla/readability)
   (`Resources/Readability.js`, v0.5.0, Apache 2.0 license), run in a JavaScript world isolated from the page.
+- Readability often drops the main picture, placed above the title: the article view shows the page's sharing
+  image (`og:image`) under the title, unless the article opens with a picture or already shows that one.
 - The article view disables the page's JavaScript; only Talk to me Bro's own script runs there.
 - `SpeechController`: playback state, choice of voice and engine (`SpeechEngine`).
 - `SystemSpeechEngine`: `AVSpeechSynthesizer` with the system voice (`NSSpeechSynthesizer.defaultVoice`),

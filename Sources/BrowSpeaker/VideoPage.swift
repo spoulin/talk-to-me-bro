@@ -166,6 +166,10 @@ enum VideoPage {
         "(() => { const v = \(video); if (v) v.playbackRate = \(speed); })()"
     }
 
+    static func volume(_ volume: Double) -> String {
+        "(() => { const v = \(video); if (v) v.volume = \(volume); })()"
+    }
+
     /// Play or pause the page's video (menu and keyboard shortcut).
     static let togglePlayback = """
     (() => {
@@ -201,7 +205,7 @@ extension VideoPage {
         /// The page loaded in place of youtube.com: the player over the whole window.
         /// `language`: the player's interface language. Matching the listener's speech
         /// language avoids translated titles and automatic subtitles.
-        static func playerPage(videoID: String, speed: Double, language: String) -> String {
+        static func playerPage(videoID: String, speed: Double, volume: Double, language: String) -> String {
             """
             <!doctype html><html><head><meta charset="utf-8">
             <style>html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
@@ -215,7 +219,8 @@ extension VideoPage {
                 host: "https://www.youtube-nocookie.com", videoId: "\(videoID)",
                 playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1, hl: "\(language)" },
                 events: {
-                  onReady: e => { ready = true; e.target.setPlaybackRate(\(speed)); e.target.playVideo(); },
+                  onReady: e => { ready = true; e.target.setPlaybackRate(\(speed)); e.target.setVolume(\(Int(volume * 100)));
+                                  e.target.playVideo(); },
                   onStateChange: e => { if (e.data === YT.PlayerState.ENDED) window.webkit.messageHandlers.video.postMessage("ended"); }
                 }
               });
@@ -227,7 +232,8 @@ extension VideoPage {
               toggle: () => { if (ready) player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); },
               seek: t => { if (ready) player.seekTo(Math.max(0, t), true); },
               skip: s => { if (ready) player.seekTo(Math.max(0, player.getCurrentTime() + s), true); },
-              rate: r => { if (ready) player.setPlaybackRate(r); }
+              rate: r => { if (ready) player.setPlaybackRate(r); },
+              volume: v => { if (ready) player.setVolume(v); }
             };
             </script></body></html>
             """
@@ -238,6 +244,7 @@ extension VideoPage {
         static func seek(to seconds: Double) -> String { "window.__bsVideo && __bsVideo.seek(\(seconds))" }
         static func skip(by seconds: Double) -> String { "window.__bsVideo && __bsVideo.skip(\(seconds))" }
         static func rate(_ speed: Double) -> String { "window.__bsVideo && __bsVideo.rate(\(speed))" }
+        static func volume(_ volume: Double) -> String { "window.__bsVideo && __bsVideo.volume(\(Int(volume * 100)))" }
 
         /// Title and channel, from YouTube's oEmbed endpoint.
         static func details(of url: URL) async -> (title: String, channel: String)? {

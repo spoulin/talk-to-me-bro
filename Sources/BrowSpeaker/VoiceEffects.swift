@@ -139,6 +139,12 @@ final class EffectPlayer {
         buffer.map { Double($0.frameLength) / $0.format.sampleRate } ?? 0
     }
 
+    /// 0…1, heard at once (the effect's tail too).
+    var volume: Float {
+        get { engine.mainMixerNode.outputVolume }
+        set { engine.mainMixerNode.outputVolume = newValue }
+    }
+
     /// Also pauses the audio output, which would otherwise keep the Mac awake.
     func pause() {
         isPaused = true

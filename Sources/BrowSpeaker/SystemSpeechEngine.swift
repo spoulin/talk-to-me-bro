@@ -6,6 +6,8 @@ import AVFoundation
 @MainActor
 final class SystemSpeechEngine: NSObject, SpeechEngine {
     var events = SpeechEngineEvents()
+    /// 0…1, for the utterances of the next `start`.
+    var volume = 1.0
 
     private struct Piece {
         let segment: SpeechSegment
@@ -30,6 +32,7 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
             let utterance = AVSpeechUtterance(string: segment.spoken)
             utterance.voice = voice
             utterance.rate = rate
+            utterance.volume = Float(volume)
             utterance.postUtteranceDelay = segment.pauseAfter
             pieces[ObjectIdentifier(utterance)] = Piece(segment: segment, isLast: i == segments.count - 1)
             synth.speak(utterance)

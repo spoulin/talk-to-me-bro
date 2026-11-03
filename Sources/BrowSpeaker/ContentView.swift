@@ -41,6 +41,7 @@ struct ContentView: View {
                 if model.phase == .ready {
                     PlaylistButton(model: model)
                     SpeedMenu(model: model, speech: model.speech)
+                    VolumeButton(model: model, speech: model.speech)
                     if !model.isVideo {
                         VoiceMenu(speech: model.speech)
                         TextSizeMenu(model: model)
@@ -56,7 +57,7 @@ struct ContentView: View {
                     Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
                         .help("Open the original page in the browser")
                     Button { model.closeArticle() } label: { Label("Close Article", systemImage: "xmark") }
-                        .help("Back to the home page (Esc)")
+                        .help(model.isSlideshowOn ? "Back to the slideshow (Esc)" : "Back to the home page (Esc)")
                 }
             }
         }
@@ -71,11 +72,11 @@ struct ContentView: View {
             NowPlaying.shared.forget(model)
         }
         .onOpenURL { model.handleOpenURL($0) }
-        // Sources refresh at launch, then every 30 minutes.
+        // Sources refresh at launch, then as often as chosen in Settings › Sources.
         .task {
             while !Task.isCancelled {
                 await Feeds.shared.refreshIfNeeded()
-                try? await Task.sleep(for: .seconds(300))
+                try? await Task.sleep(for: .seconds(60))
             }
         }
         // Shared links go to an existing window instead of opening a new one.
@@ -115,6 +116,14 @@ private struct WelcomeView: View {
     }
 
     var body: some View {
+        if model.isSlideshowOn, model.phase == .empty {
+            SlideshowView(model: model)
+        } else {
+            page
+        }
+    }
+
+    private var page: some View {
         Group {
             if model.phase == .loading {
                 VStack(spacing: 18) {
@@ -232,16 +241,13 @@ private struct ToReadSection: View {
         self.model = model
     }
 
-    private static func isVideo(_ url: URL) -> Bool {
+    static func isVideo(_ url: URL) -> Bool {
         VideoPage.looksLikeVideo(url) || VideoPage.YouTube.videoID(in: url) != nil
     }
 
     private var items: [FeedItem] {
-        let latest = feeds.latest
         switch tab {
-        case .all: return shown(latest)
-        case .articles: return shown(latest.filter { !Self.isVideo($0.url) })
-        case .videos: return shown(latest.filter { Self.isVideo($0.url) })
+        case .all, .articles, .videos: return Self.feedItems(tab, hidingRead: hidesRead, model: model)
         case .playlist: return []
         case .history:
             // History entries as cards, with the picture of the same article in the sources when known.
@@ -254,29 +260,69 @@ private struct ToReadSection: View {
         }
     }
 
-    /// The 24 newest; once read articles are hidden, the 24 newest unread.
-    private func shown(_ items: [FeedItem]) -> [FeedItem] {
-        Array((hidesRead ? items.filter { !model.hasRead($0.url) } : items).prefix(24))
+    private func tabGlyph(_ symbol: String, _ name: LocalizedStringKey) -> some View {
+        Image(systemName: symbol).help(name).accessibilityLabel(name)
+    }
+
+    /// "8:42", with the day when it wasn't today.
+    private static func time(of date: Date) -> String {
+        Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened)
+                                             : date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    /// "8:42", or only the day when it wasn't today ("1 Nov"): short enough for a button.
+    private static func shortTime(of date: Date) -> String {
+        Calendar.current.isDateInToday(date) ? date.formatted(date: .omitted, time: .shortened)
+                                             : date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    /// A feed tab's articles: the 24 newest; once read articles are hidden, the 24
+    /// newest unread. The slideshow shows the same.
+    static func feedItems(_ tab: Tab, hidingRead: Bool, model: BrowserModel) -> [FeedItem] {
+        let latest = Feeds.shared.latest
+        let items = switch tab {
+        case .articles: latest.filter { !isVideo($0.url) }
+        case .videos: latest.filter { isVideo($0.url) }
+        default: latest
+        }
+        return Array((hidingRead ? items.filter { !model.hasRead($0.url) } : items).prefix(24))
     }
 
     var body: some View {
+        // Drawn again each minute, so the "5 minutes ago" keep up while the window sits open.
+        TimelineView(.everyMinute) { _ in
+            content
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         let items = self.items
         VStack(alignment: .leading, spacing: 12) {
+            // The tabs as glyphs but All (their names in the help), so the bar fits on one row,
+            // no wider than the cards. The playlist's shows its count instead, when it has
+            // any: a segment shows a text or a picture, not both.
             HStack {
                 Picker("Show", selection: $tab) {
                     Text("All").tag(Tab.all)
-                    Text("Articles").tag(Tab.articles)
-                    Text("Videos").tag(Tab.videos)
+                    tabGlyph("newspaper", "Articles").tag(Tab.articles)
+                    tabGlyph("play.rectangle", "Videos").tag(Tab.videos)
                     Group {
-                        if model.playlist.items.isEmpty { Text("Playlist") } else { Text("Playlist (\(model.playlist.items.count))") }
+                        if model.playlist.items.isEmpty {
+                            tabGlyph("list.bullet", "Playlist")
+                        } else {
+                            Text(verbatim: "\(model.playlist.items.count)")
+                                .help("Playlist")
+                                .accessibilityLabel("Playlist")
+                                .accessibilityValue(Text(verbatim: "\(model.playlist.items.count)"))
+                        }
                     }
                     .tag(Tab.playlist)
-                    Text("History").tag(Tab.history)
+                    tabGlyph("clock.arrow.circlepath", "History").tag(Tab.history)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
-                if feeds.isRefreshing { ProgressView().controlSize(.small) }
                 Spacer()
                 if tab == .playlist {
                     Button { model.playNextInPlaylist() } label: { Label("Play Playlist", systemImage: "play.fill") }
@@ -284,7 +330,7 @@ private struct ToReadSection: View {
                 } else {
                     Picker("Display", selection: $style) {
                         Image(systemName: "square.grid.2x2").help("Cards").tag("cards")
-                        Image(systemName: "list.bullet").help("List").tag("list")
+                        Image(systemName: "rectangle.grid.1x2").help("List").tag("list")
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -296,15 +342,35 @@ private struct ToReadSection: View {
                     Button("Clear") { model.history.clear() }
                         .disabled(items.isEmpty)
                 } else {
+                    Button {
+                        model.slideURL = nil
+                        model.slideIndex = 0
+                        model.isSlideshowOn = true
+                    } label: {
+                        Label("Slideshow", systemImage: "play.rectangle.on.rectangle")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Slideshow: the articles one at a time")
+                    .disabled(items.isEmpty)
                     // A plain button like ↻: only the eye changes (crossed out while read articles are hidden).
                     Button { hidesRead.toggle() } label: {
                         Label("Hide Read", systemImage: hidesRead ? "eye.slash" : "eye")
                     }
                     .labelStyle(.iconOnly)
                     .help(hidesRead ? "Show read articles" : "Hide read articles")
-                    Button { Task { await feeds.refreshAll() } } label: { Image(systemName: "arrow.clockwise") }
-                        .help("Refresh")
-                        .disabled(feeds.isRefreshing)
+                    // ↻ shows when it last refreshed, and turns into a spinner while it refreshes.
+                    Button { Task { await feeds.refreshAll() } } label: {
+                        HStack(spacing: 4) {
+                            if feeds.isRefreshing {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            if let date = feeds.lastRefresh { Text(verbatim: Self.shortTime(of: date)).monospacedDigit() }
+                        }
+                    }
+                    // Not disabled while refreshing (a click then does nothing): the spinner stays easy to see.
+                    .help(feeds.lastRefresh.map { Text("Refreshed at \(Self.time(of: $0)). Click to refresh now.") } ?? Text("Refresh"))
                     // Picking an order also starts listening in it, and becomes the button's order.
                     Menu {
                         Button { listenToAll(items, oldestFirst: false) } label: {
@@ -340,7 +406,7 @@ private struct ToReadSection: View {
             } else {
                 ForEach(items) { item in
                     HStack {
-                        ArticleRow(title: item.title, detail: detail(of: item), isRead: tab != .history && model.hasRead(item.url),
+                        ArticleRow(title: item.title, detail: Self.detail(of: item), isRead: tab != .history && model.hasRead(item.url),
                                    isVideo: Self.isVideo(item.url)) {
                             model.play(item.url)
                         }
@@ -387,7 +453,7 @@ private struct ToReadSection: View {
     }
 
     private func card(_ item: FeedItem, imageHeight: CGFloat, titleFont: Font) -> some View {
-        ArticleCard(item: item, detail: detail(of: item), isRead: tab != .history && model.hasRead(item.url),
+        ArticleCard(item: item, detail: Self.detail(of: item), isRead: tab != .history && model.hasRead(item.url),
                     imageHeight: imageHeight, titleFont: titleFont,
                     play: { model.play(item.url) }, add: { model.addToPlaylist(item.url, title: item.title, site: item.sourceTitle) })
             .contextMenu { menu(for: item) }
@@ -403,9 +469,373 @@ private struct ToReadSection: View {
         }
     }
 
-    private func detail(of item: FeedItem) -> String {
+    static func detail(of item: FeedItem) -> String {
         guard let date = item.date else { return item.sourceTitle }
         return "\(item.sourceTitle) · \(date.formatted(.relative(presentation: .named)))"
+    }
+}
+
+/// The slideshow's choices, also in Settings › Slideshow.
+enum Slideshow {
+    static let durations = [5, 8, 10, 15, 20, 30, 60]
+
+    /// How one article gives way to the next.
+    enum Transition: String, CaseIterable, Identifiable {
+        case fade, black, slide, zoom, blur, wipe, random
+
+        var id: Self { self }
+
+        var label: String {
+            switch self {
+            case .fade: String(localized: "Crossfade")
+            case .black: String(localized: "Fade through black")
+            case .slide: String(localized: "Slide")
+            case .zoom: String(localized: "Zoom")
+            case .blur: String(localized: "Blur")
+            case .wipe: String(localized: "Wipe")
+            case .random: String(localized: "Random")
+            }
+        }
+
+        /// For `random`, one of the others each time.
+        var resolved: Transition {
+            self == .random ? Self.allCases.filter { $0 != .random }.randomElement() ?? .fade : self
+        }
+
+        var animation: Animation {
+            switch self {
+            case .slide: .easeInOut(duration: 0.7)
+            case .black: .easeInOut(duration: 1)
+            default: .easeInOut(duration: 0.9)
+            }
+        }
+    }
+}
+
+/// The move under way, read by the slides as they come and go. A leaving slide keeps
+/// the transition it came with, not the latest one: so one transition for all, which
+/// looks here for the effect and the direction.
+private final class SlideMotion {
+    var effect = Slideshow.Transition.fade
+    var forward = true
+}
+
+/// A slide coming (0 → 1) or leaving (1 → 0), as the move under way wants. The
+/// same modifiers whatever the effect, so a slide keeps its content when it changes.
+private struct SlideEffect: ViewModifier, Animatable {
+    let motion: SlideMotion
+    /// 1: in place; 0: not in yet, or gone.
+    var shown: Double
+    let leaving: Bool
+
+    var animatableData: Double {
+        get { shown }
+        set { shown = newValue }
+    }
+
+    static func transition(_ motion: SlideMotion) -> AnyTransition {
+        .asymmetric(insertion: .modifier(active: Self(motion: motion, shown: 0, leaving: false),
+                                         identity: Self(motion: motion, shown: 1, leaving: false)),
+                    removal: .modifier(active: Self(motion: motion, shown: 0, leaving: true),
+                                       identity: Self(motion: motion, shown: 1, leaving: true)))
+    }
+
+    func body(content: Content) -> some View {
+        let effect = motion.effect, away = 1 - shown
+        // Forward, the next one comes from the right and the old one leaves to the left.
+        let side: Double = (leaving ? -1 : 1) * (motion.forward ? 1 : -1)
+        let opacity: Double = switch effect {
+        // Out to black, then in: half the time each.
+        case .black: max(0, 2 * shown - 1)
+        // The new one is uncovered over the old one, which leaves once covered.
+        case .wipe: leaving ? (shown > 0 ? 1 : 0) : 1
+        default: shown
+        }
+        // As if going through: the old one grows as it fades, the new one grows into place.
+        let scale = effect == .zoom ? (leaving ? 1 + 0.08 * away : 1 - 0.08 * away) : 1
+        let shift = effect == .slide ? side * away : 0
+        let uncovered = effect == .wipe && !leaving ? shown : 1
+        content
+            .scaleEffect(scale)
+            .blur(radius: effect == .blur ? 40 * away : 0)
+            .visualEffect { view, geometry in view.offset(x: geometry.size.width * shift) }
+            .mask {
+                Rectangle().scaleEffect(x: max(uncovered, 0.001), y: 1, anchor: motion.forward ? .leading : .trailing)
+            }
+            .opacity(opacity)
+    }
+}
+
+/// The home page's articles one at a time, picture and title, a few seconds each,
+/// round and round while the sources refresh. A click listens to the article,
+/// whose end comes back here.
+private struct SlideshowView: View {
+    let model: BrowserModel
+    private var feeds = Feeds.shared
+    @AppStorage("homeTab") private var tab = ToReadSection.Tab.all
+    @AppStorage("hideRead") private var hidesRead = false
+    @AppStorage("slideshowSeconds") private var seconds = 10
+    @AppStorage("slideshowTransition") private var style = Slideshow.Transition.fade
+    @AppStorage("slideshowKenBurns") private var kenBurns = false
+    @AppStorage("slideshowTitleAfter") private var titleAfter = false
+    @State private var motion = SlideMotion()
+    @State private var isPaused = false
+    /// When the slide appeared, for the progress line.
+    @State private var shownAt = Date()
+    /// Counts the moves, so the timer starts again even when the slide stays the same.
+    @State private var moves = 0
+    /// Each new slide above the one it replaces: a slide being removed from a stack
+    /// is otherwise drawn below the others, and its transition isn't seen.
+    @State private var layer = 0.0
+    @State private var showsControls = false
+    @State private var isOverControls = false
+    @State private var hidingControls: Task<Void, Never>?
+    @FocusState private var isFocused: Bool
+
+    init(model: BrowserModel) {
+        self.model = model
+    }
+
+    private var items: [FeedItem] {
+        ToReadSection.feedItems([.articles, .videos].contains(tab) ? tab : .all, hidingRead: hidesRead, model: model)
+    }
+
+    /// Where the slide's article is now, or where it was once the sources dropped it.
+    private func index(in items: [FeedItem]) -> Int {
+        items.firstIndex { $0.url == model.slideURL } ?? min(model.slideIndex, items.count - 1)
+    }
+
+    private func move(by step: Int) {
+        let items = self.items
+        guard !items.isEmpty else { return }
+        let i = (index(in: items) + step + items.count) % items.count
+        let effect = style.resolved
+        motion.effect = effect
+        motion.forward = step >= 0
+        moves += 1
+        withAnimation(effect.animation) {
+            layer += 1
+            model.slideURL = items[i].url
+            model.slideIndex = i
+        }
+    }
+
+    private func open(_ item: FeedItem) {
+        // Back from the article: the next one.
+        move(by: 1)
+        model.playFromSlideshow(item.url)
+    }
+
+    var body: some View {
+        let items = self.items
+        let i = items.isEmpty ? 0 : index(in: items)
+        ZStack {
+            if items.isEmpty {
+                Text(hidesRead ? "No unread articles." : "No articles yet.").foregroundStyle(.white.opacity(0.6))
+            } else {
+                let item = items[i]
+                // The picture zooms slowly until the slide is gone, transition included.
+                Slide(item: item, isRead: model.hasRead(item.url),
+                      zoomSeconds: kenBurns ? Double(seconds) + 2 : nil, titleAfter: titleAfter)
+                    .contentShape(Rectangle())
+                    .onTapGesture { open(item) }
+                    .help("Click to listen")
+                    .id(item.url)
+                    .transition(SlideEffect.transition(motion))
+                    .zIndex(layer)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black)
+        .clipped()
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
+                if showsControls || isPaused || items.isEmpty {
+                    controls(number: i + 1, of: items.count)
+                        .onHover { isOverControls = $0 }
+                        .transition(.opacity)
+                }
+                progress
+            }
+        }
+        // Each slide for `seconds`, then the next one.
+        .task(id: "\(moves) \(model.slideURL?.absoluteString ?? "") \(isPaused) \(seconds) \(items.isEmpty)") {
+            shownAt = Date()
+            guard !isPaused, !items.isEmpty else { return }
+            try? await Task.sleep(for: .seconds(seconds))
+            if !Task.isCancelled { move(by: 1) }
+        }
+        // The next picture, loaded ahead.
+        .task(id: items.isEmpty ? nil : items[(i + 1) % items.count].image) {
+            if !items.isEmpty, let next = items[(i + 1) % items.count].image {
+                _ = try? await URLSession.shared.data(from: next)
+            }
+        }
+        // The controls show while the mouse moves, then hide with the pointer.
+        .onContinuousHover { phase in
+            switch phase {
+            case .active: revealControls()
+            case .ended: withAnimation { showsControls = false }
+            }
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isFocused)
+        .onAppear { isFocused = true }
+        .onKeyPress(.leftArrow) { move(by: -1); return .handled }
+        .onKeyPress(.rightArrow) { move(by: 1); return .handled }
+        .onKeyPress(.space) { isPaused.toggle(); return .handled }
+        .onKeyPress(.return) {
+            if !items.isEmpty { open(items[i]) }
+            return .handled
+        }
+        .onKeyPress(.escape) { model.isSlideshowOn = false; return .handled }
+    }
+
+    private func revealControls() {
+        withAnimation { showsControls = true }
+        hidingControls?.cancel()
+        hidingControls = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled, !isOverControls else { return }
+            withAnimation { showsControls = false }
+            NSCursor.setHiddenUntilMouseMoves(true)
+        }
+    }
+
+    private func controls(number: Int, of count: Int) -> some View {
+        HStack(spacing: 18) {
+            if count > 0 {
+                Text(verbatim: "\(number) / \(count)").monospacedDigit().foregroundStyle(.white.opacity(0.7))
+                Button { move(by: -1) } label: { Image(systemName: "backward.fill") }
+                    .help("Previous (←)")
+                Button { isPaused.toggle() } label: { Image(systemName: isPaused ? "play.fill" : "pause.fill") }
+                    .help(isPaused ? "Resume (Space)" : "Pause (Space)")
+                Button { move(by: 1) } label: { Image(systemName: "forward.fill") }
+                    .help("Next (→)")
+                Menu {
+                    ForEach(Slideshow.durations, id: \.self) { n in
+                        Button { seconds = n } label: {
+                            if n == seconds { Label("\(n) seconds", systemImage: "checkmark") } else { Text("\(n) seconds") }
+                        }
+                    }
+                } label: {
+                    Label("\(seconds) s", systemImage: "timer")
+                }
+                .menuStyle(.button)
+                .fixedSize()
+                .help("Time per article")
+            }
+            Button { NSApp.keyWindow?.toggleFullScreen(nil) } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                .help("Full Screen")
+            Button { model.isSlideshowOn = false } label: { Image(systemName: "xmark") }
+                .help("Close the slideshow (Esc)")
+        }
+        .buttonStyle(.plain)
+        .font(.title3)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 22).padding(.vertical, 10)
+        .background(.black.opacity(0.6), in: Capsule())
+        .environment(\.colorScheme, .dark)
+        .padding(.bottom, 16)
+    }
+
+    /// A thin line across the bottom, filling up until the next slide.
+    private var progress: some View {
+        TimelineView(.animation(minimumInterval: 0.1, paused: isPaused)) { context in
+            GeometryReader { geometry in
+                let fraction = isPaused ? 0 : min(context.date.timeIntervalSince(shownAt) / Double(seconds), 1)
+                Rectangle().fill(.white.opacity(0.35)).frame(width: geometry.size.width * fraction)
+            }
+        }
+        .frame(height: 3)
+    }
+}
+
+/// One article of the slideshow: the picture, whole, over a blurred copy of itself
+/// that fills the window whatever its shape; the title and source right below, the
+/// two centered.
+private struct Slide: View {
+    let item: FeedItem
+    let isRead: Bool
+    /// Ken Burns: the picture zooms in slowly for this long, from when it shows.
+    let zoomSeconds: Double?
+    /// The title rises a moment after the picture.
+    let titleAfter: Bool
+    @State private var showsTitle = false
+
+    var body: some View {
+        AsyncImage(url: item.image) { phase in
+            ZStack {
+                if let image = phase.image {
+                    Color.clear
+                        .overlay { image.resizable().scaledToFill().blur(radius: 60).opacity(0.45) }
+                        .clipped()
+                }
+                VStack(spacing: 28) {
+                    if let image = phase.image {
+                        image.resizable().scaledToFit()
+                            .modifier(SlowZoom(seconds: zoomSeconds))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .shadow(color: .black.opacity(0.5), radius: 30)
+                    } else {
+                        // While the picture loads, or without one: its place, so the title doesn't jump.
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(.white.opacity(0.06))
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .overlay {
+                                if item.image == nil {
+                                    Text(item.sourceTitle).font(.largeTitle.weight(.semibold)).foregroundStyle(.white.opacity(0.35))
+                                }
+                            }
+                    }
+                    VStack(spacing: 10) {
+                        Text(item.title)
+                            .font(.system(size: 34, weight: .bold))
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.center)
+                        HStack(spacing: 8) {
+                            if ToReadSection.isVideo(item.url) { Image(systemName: "play.rectangle") }
+                            Text(ToReadSection.detail(of: item))
+                            if isRead { Label("Read", systemImage: "checkmark") }
+                        }
+                        .font(.title3)
+                        .foregroundStyle(.white.opacity(0.65))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: 900)
+                    .opacity(titleAfter && !showsTitle ? 0 : 1)
+                    .offset(y: titleAfter && !showsTitle ? 18 : 0)
+                    // The title first: the picture takes the room left.
+                    .layoutPriority(1)
+                }
+                .padding(.horizontal, 48)
+                .padding(.top, 40)
+                .padding(.bottom, 64)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .onAppear {
+            // After the transition's start, even a fade through black.
+            if titleAfter { withAnimation(.easeOut(duration: 0.7).delay(0.8)) { showsTitle = true } }
+        }
+    }
+}
+
+/// Ken Burns: zooms in slowly toward a corner (another one each time), from when
+/// the picture shows.
+private struct SlowZoom: ViewModifier {
+    let seconds: Double?
+    @State private var zoomed = false
+    @State private var anchor = [UnitPoint.topLeading, .topTrailing, .bottomLeading, .bottomTrailing, .center].randomElement() ?? .center
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(zoomed ? 1.15 : 1, anchor: anchor)
+            .onAppear {
+                if let seconds { withAnimation(.linear(duration: seconds)) { zoomed = true } }
+            }
     }
 }
 
@@ -644,8 +1074,9 @@ private struct PlayerBar: View {
                 .buttonStyle(.plain)
 
                 // What plays next, facing what plays now: the controls stay centered.
+                // Not for an article opened from the slideshow: its end goes back there.
                 Group {
-                    if let next = model.playlist.items.first {
+                    if !model.startedFromSlideshow, let next = model.playlist.items.first {
                         Button { model.nextArticle() } label: {
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(next.displayTitle).font(.subheadline.weight(.medium)).lineLimit(1)
@@ -713,6 +1144,46 @@ private struct SpeedMenu: View {
 
     private static func label(_ speed: Double) -> String {
         speed.formatted(.number.precision(.fractionLength(0...2))) + "×"
+    }
+}
+
+/// The volume of what plays. Reading and videos each keep their own, so going
+/// from a video to an article doesn't call for the Mac's volume keys.
+private struct VolumeButton: View {
+    @Bindable var model: BrowserModel
+    @Bindable var speech: SpeechController
+    @State private var shows = false
+
+    var body: some View {
+        let volume = model.isVideo ? $model.videoVolume : $speech.volume
+        Button { shows.toggle() } label: {
+            Label("Volume", systemImage: Self.icon(volume.wrappedValue))
+        }
+        .help(model.isVideo ? "Video volume" : "Reading volume")
+        .popover(isPresented: $shows, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(model.isVideo ? "Video volume" : "Reading volume").font(.headline)
+                HStack {
+                    Image(systemName: "speaker.fill").foregroundStyle(.secondary)
+                    Slider(value: volume, in: 0...1)
+                    Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
+                }
+                Text("Reading and videos each keep their own volume.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .frame(width: 280)
+        }
+    }
+
+    private static func icon(_ volume: Double) -> String {
+        switch volume {
+        case 0: "speaker.slash"
+        case ..<0.34: "speaker.wave.1"
+        case ..<0.67: "speaker.wave.2"
+        default: "speaker.wave.3"
+        }
     }
 }
 

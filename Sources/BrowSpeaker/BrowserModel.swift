@@ -30,6 +30,13 @@ final class BrowserModel: NSObject {
     private(set) var videoPlaying = false
     /// An ad is playing (and muted).
     private(set) var videoAd = false
+    /// 0…1, apart from the reading's: videos (YouTube above all) are often louder than the voices.
+    var videoVolume: Double = UserDefaults.standard.object(forKey: "videoVolume") as? Double ?? 1 {
+        didSet {
+            UserDefaults.standard.set(videoVolume, forKey: "videoVolume")
+            applyVideoVolume()
+        }
+    }
     @ObservationIgnored private var videoPolling: Task<Void, Never>?
     /// A YouTube video, played in YouTube's own embeddable player (see `VideoPage.YouTube`).
     @ObservationIgnored private var isYouTube = false
@@ -47,6 +54,13 @@ final class BrowserModel: NSObject {
     private(set) var blockLengths: [Int] = []
     /// The paragraph being read, or where reading stopped.
     private(set) var position = 0
+    /// The home page's slideshow is on: closing an article goes back to it.
+    var isSlideshowOn = false
+    /// The slide shown, by address, and by position when the sources no longer have it.
+    var slideURL: URL?
+    var slideIndex = 0
+    /// The article was opened from the slideshow: its end goes back there, not on to the playlist.
+    private(set) var startedFromSlideshow = false
 
     var readerFontSize: Double = UserDefaults.standard.object(forKey: "readerFontSize") as? Double ?? 20 {
         didSet {
@@ -182,7 +196,7 @@ final class BrowserModel: NSObject {
     /// The article was read (or the video watched) to the end: on to the next
     /// one of the playlist, or else back to the home page after a moment.
     private func articleFinished() {
-        guard !playNextInPlaylist() else { return }
+        if !startedFromSlideshow, playNextInPlaylist() { return }
         let finished = articleURL
         Task {
             try? await Task.sleep(for: .seconds(1.5))
@@ -207,6 +221,11 @@ final class BrowserModel: NSObject {
 
     func play(_ url: URL) {
         start(url)
+    }
+
+    func playFromSlideshow(_ url: URL) {
+        start(url)
+        startedFromSlideshow = true
     }
 
     /// Queues the articles and starts the first one if nothing is playing.
@@ -246,6 +265,7 @@ final class BrowserModel: NSObject {
     private func start(_ page: URL) {
         NowPlaying.shared.follow(self)
         speech.stop()
+        startedFromSlideshow = false
         isVideo = false
         isYouTube = false
         articleDate = Self.knownDate(of: page)
@@ -343,7 +363,7 @@ final class BrowserModel: NSObject {
         isYouTube = true
         isVideo = true
         phase = .ready
-        webView.loadHTMLString(VideoPage.YouTube.playerPage(videoID: videoID, speed: speech.speed,
+        webView.loadHTMLString(VideoPage.YouTube.playerPage(videoID: videoID, speed: speech.speed, volume: videoVolume,
                                                             language: String(AVVoices.systemLanguage.prefix(2))),
                                baseURL: URL(string: "https://www.youtube-nocookie.com/"))
         startVideoPolling()
@@ -406,7 +426,10 @@ final class BrowserModel: NSObject {
                    let state = try? JSONDecoder().decode(State.self, from: Data(json.utf8)) {
                     self.videoTime = state.t
                     self.videoDuration = state.d
-                    if state.p, !self.videoPlaying { self.applyVideoSpeed() }
+                    if state.p, !self.videoPlaying {
+                        self.applyVideoSpeed()
+                        self.applyVideoVolume()
+                    }
                     self.videoPlaying = state.p
                 }
                 // YouTube's player is in another site's frame: nothing to inspect there.
@@ -427,6 +450,11 @@ final class BrowserModel: NSObject {
     func applyVideoSpeed() {
         guard isVideo else { return }
         runVideo(VideoPage.rate(speech.speed), youtube: VideoPage.YouTube.rate(speech.speed))
+    }
+
+    func applyVideoVolume() {
+        guard isVideo else { return }
+        runVideo(VideoPage.volume(videoVolume), youtube: VideoPage.YouTube.volume(videoVolume))
     }
 
     /// Once the article is displayed: split it into paragraphs and start reading.

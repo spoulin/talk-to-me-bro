@@ -36,7 +36,11 @@ Pour ouvrir un article :
 
 La lecture démarre toute seule. La barre du bas montre la progression (cliquer ou glisser pour sauter
 à un paragraphe), le temps restant, les commandes et ce qui suit. La barre d'outils regroupe la playlist,
-la vitesse et les pauses, la voix et la taille du texte.
+la vitesse et les pauses, le volume (🔊), la voix et la taille du texte.
+
+Le volume est une part du volume du Mac, retenue à part pour la lecture et pour les vidéos : une fois réglé,
+passer d'une vidéo YouTube à un article ne demande plus de toucher aux touches de volume. Avec une voix
+Piper, un changement s'entend tout de suite ; avec une voix macOS, au paragraphe suivant.
 
 | Action | Raccourci |
 | --- | --- |
@@ -77,13 +81,22 @@ charge la page (JavaScript compris) et garde ses liens
 d'articles (mode « approximatif », sans dates).
 
 L'accueil affiche alors **À lire** : les derniers articles de toutes les sources, du plus récent au plus
-ancien (un article sans date dans sa source la prend dans l'article lui-même), en cartes façon magazine (le plus récent en grand) ou en liste (⊞ / ☰). Les images viennent du
+ancien (un article sans date dans sa source la prend dans l'article lui-même), en cartes façon magazine (le plus récent en grand) ou en liste (⊞ / ▤). Les images viennent du
 flux, de la page, ou de l'image de partage de chaque article (`og:image`). Les articles déjà lus sont
 grisés et marqués « Lu » (👁 pour les masquer ; le choix est retenu) ; un article présent dans plusieurs sources n'apparaît qu'une fois. Clic pour écouter, ➕ pour ajouter à la playlist, *Tout écouter* pour
 mettre les non lus en file (▾ pour écouter plutôt du plus ancien au plus
-récent ; le choix est retenu). Des onglets montrent *Tout*, seulement les *Articles* ou les *Vidéos*, la
-*Playlist* ou l'*Historique* ; les vidéos portent une marque 🎥. Les sources s'actualisent au lancement et toutes les 30 minutes (↻ pour
-actualiser).
+récent ; le choix est retenu). Des onglets (en icônes, nommés au survol) montrent *Tout*, seulement les *Articles* ou les *Vidéos*, la
+*Playlist* (avec son nombre d'articles) ou l'*Historique* ; les vidéos portent une marque 🎥. Les sources s'actualisent au lancement, puis toutes les 30 minutes par défaut
+(de toutes les 5 minutes à au lancement seulement, dans *Réglages › Sources* ; ↻ pour actualiser tout de suite).
+Le bouton ↻ affiche l'heure de la dernière actualisation.
+
+Le bouton diaporama montre les articles de l'onglet un à un, image et titre, quelques secondes chacun (de 5 à
+60, durée retenue), en boucle : les nouveaux articles s'y ajoutent à mesure que les sources s'actualisent. Clic
+sur une diapo (ou Retour) pour l'écouter ; à la fin, ou avec Échap, le diaporama revient, sur l'article suivant.
+← → pour avancer ou reculer, Espace pour la pause, Échap pour fermer ; les commandes apparaissent quand la
+souris bouge. Dans *Réglages › Diaporama* : la durée par article, la transition (fondu enchaîné, fondu au noir,
+glissement, zoom, flou, volet ou aléatoire), un zoom lent sur les images (effet Ken Burns) et le titre qui
+apparaît juste après l'image.
 
 ## Pages vidéo
 
@@ -91,7 +104,7 @@ Certains « articles » ne sont qu'une vidéo (ex. : `ici.radio-canada.ca/info/v
 une adresse de vidéo, ou très peu de texte autour d'une grande vidéo, l'app passe en **mode vidéo** : la
 page d'origine est affichée avec son lecteur isolé, centré à ses proportions dans la fenêtre, et le reste
 masqué. La barre du lecteur et la barre d'outils habituelles le pilotent : position et temps restant, lecture/pause,
-⟲ 15 s / ⟳ 15 s, vitesse, article suivant (les commandes du site marchent aussi). La vidéo démarre toute seule ; les pubs du site, s'il y en a,
+⟲ 15 s / ⟳ 15 s, vitesse, volume, article suivant (les commandes du site marchent aussi). La vidéo démarre toute seule ; les pubs du site, s'il y en a,
 sont jouées sans le son (« Pub · son coupé » dans la barre) et le son revient pour la vidéo. À la fin de la vidéo, l'article
 suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
 
@@ -190,6 +203,8 @@ existante, passe en mode lecture et la lecture commence.
 - `BrowserModel` : un `WKWebView` caché charge la page, un second affiche l'article épuré.
 - Extraction de l'article avec [Mozilla Readability](https://github.com/mozilla/readability)
   (`Resources/Readability.js`, v0.5.0, licence Apache 2.0), exécutée dans un monde JS isolé de la page.
+- Readability retire souvent la photo principale, placée au-dessus du titre : la vue lecture affiche l'image de
+  partage de la page (`og:image`) sous le titre, sauf si l'article s'ouvre déjà sur une photo ou montre celle-là.
 - La vue lecture désactive le JavaScript de la page ; seul le script de Talk to me Bro y tourne.
 - `SpeechController` : état de lecture, choix de la voix et du moteur (`SpeechEngine`).
 - `SystemSpeechEngine` : `AVSpeechSynthesizer`, avec la voix système (`NSSpeechSynthesizer.defaultVoice`),

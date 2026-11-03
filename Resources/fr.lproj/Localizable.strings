@@ -142,6 +142,14 @@
 "RSS feed" = "Flux RSS";
 "Links from the page (approximate)" = "Liens de la page (approximatif)";
 "No sources yet." = "Aucune source pour l’instant.";
+"Refresh sources" = "Actualiser les sources";
+"Every 5 minutes" = "Toutes les 5 minutes";
+"Every 15 minutes" = "Toutes les 15 minutes";
+"Every 30 minutes" = "Toutes les 30 minutes";
+"Every hour" = "Toutes les heures";
+"Every 2 hours" = "Toutes les 2 heures";
+"At launch only" = "Au lancement seulement";
+"Refreshed at %@. Click to refresh now." = "Actualisé à %@. Cliquer pour actualiser maintenant.";
 "“%@” is not a web address." = "« %@ » n’est pas une adresse web.";
 "No articles found at this address." = "Aucun article trouvé à cette adresse.";
 "This source is already in the list." = "Cette source est déjà dans la liste.";
@@ -168,6 +176,12 @@
 "List" = "Liste";
 "Read" = "Lu";
 
+/* Volume */
+"Volume" = "Volume";
+"Video volume" = "Volume des vidéos";
+"Reading volume" = "Volume de la lecture";
+"Reading and videos each keep their own volume." = "La lecture et les vidéos gardent chacune leur volume.";
+
 /* Video pages */
 "Video" = "Vidéo";
 "Back 15 seconds" = "Reculer de 15 secondes";
@@ -189,3 +203,27 @@
 "Add the unread articles to the playlist, oldest first, and start listening" = "Ajouter les articles non lus à la playlist, du plus ancien au plus récent, et commencer l’écoute";
 "Add the unread articles to the playlist, newest first, and start listening" = "Ajouter les articles non lus à la playlist, du plus récent au plus ancien, et commencer l’écoute";
 "Back to the home page (Esc)" = "Retour à l’accueil (Échap)";
+"Slideshow" = "Diaporama";
+"Slideshow: the articles one at a time" = "Diaporama : les articles un à un";
+"Back to the slideshow (Esc)" = "Retour au diaporama (Échap)";
+"Click to listen" = "Cliquer pour écouter";
+"Previous (←)" = "Précédent (←)";
+"Next (→)" = "Suivant (→)";
+"Pause (Space)" = "Pause (Espace)";
+"Resume (Space)" = "Reprendre (Espace)";
+"%lld seconds" = "%lld secondes";
+"%lld s" = "%lld s";
+"Time per article" = "Durée par article";
+"Full Screen" = "Plein écran";
+"Close the slideshow (Esc)" = "Fermer le diaporama (Échap)";
+"Crossfade" = "Fondu enchaîné";
+"Fade through black" = "Fondu au noir";
+"Slide" = "Glissement";
+"Zoom" = "Zoom";
+"Blur" = "Flou";
+"Wipe" = "Volet";
+"Random" = "Aléatoire";
+"Transition" = "Transition";
+"Random takes another transition for each article." = "Aléatoire prend une transition différente pour chaque article.";
+"Slow zoom on the pictures (Ken Burns effect)" = "Zoom lent sur les images (effet Ken Burns)";
+"Show the title just after the picture" = "Faire apparaître le titre juste après l’image";

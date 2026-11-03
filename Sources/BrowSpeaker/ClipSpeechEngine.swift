@@ -29,7 +29,19 @@ final class ClipSpeechEngine: SpeechEngine {
     private var isPaused = false
     /// The next segment, when pause was pressed during the silence before it.
     private var pendingNext: (() -> Void)?
-    private lazy var output = EffectPlayer()
+    /// Created on first use: the audio engine isn't set up for nothing.
+    private var existingOutput: EffectPlayer?
+    private var output: EffectPlayer {
+        if let existingOutput { return existingOutput }
+        let output = EffectPlayer()
+        output.volume = Float(volume)
+        existingOutput = output
+        return output
+    }
+    /// 0…1, heard at once.
+    var volume = 1.0 {
+        didSet { existingOutput?.volume = Float(volume) }
+    }
     private var downloads: [Int: Task<Data, Error>] = [:]
     private var wordTimer: Timer?
 

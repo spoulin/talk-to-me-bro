@@ -11,6 +11,8 @@ struct Article: Decodable {
     var kicker: String?
     /// When the page says it was published (ISO 8601), or "".
     var published: String?
+    /// The page's main picture, to show under the title, or "".
+    var image: String?
 }
 
 /// The "Just Read"-style page: article extraction on the live page with
@@ -70,6 +72,30 @@ enum ReaderPage {
           }
           return { kicker: "", title: title };
         };
+        // The page's main picture (its sharing image): often above the title, out of
+        // what Readability keeps. Not when the article opens with a picture, or shows
+        // that one (at another size: its file name is the same).
+        var leadImage = function (content) {
+          var meta = document.querySelector('meta[property="og:image"], meta[name="og:image"], ' +
+            'meta[name="twitter:image"], meta[property="twitter:image"]');
+          var src = meta && meta.getAttribute("content");
+          try { src = src && new URL(src, location.href).href; } catch (e) { src = ""; }
+          if (!src || !/^https?:/.test(src) || /logo|placeholder|default/i.test(src)) return "";
+          var name = function (url) {
+            var file = (url || "").split(/[?#]/)[0].split("/").pop().toLowerCase();
+            return file.replace(/\\.\\w+$/, "").replace(/[-_]\\d+x\\d+$|@\\dx$|-scaled$/, "");
+          };
+          var doc = new DOMParser().parseFromString(content, "text/html");
+          var images = doc.querySelectorAll("img");
+          for (var i = 0; i < images.length; i++) {
+            var sources = [images[i].getAttribute("src")].concat((images[i].getAttribute("srcset") || "").split(",")
+              .map(function (s) { return s.trim().split(/\\s+/)[0]; }));
+            if (sources.some(function (s) { return s && name(s) === name(src); })) return "";
+          }
+          var first = Array.prototype.find.call(doc.querySelectorAll("p"), function (p) { return norm(p.textContent).length > 40; });
+          if (images.length && (!first || images[0].compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING)) return "";
+          return src;
+        };
         try {
           var a = new Readability(document.cloneNode(true)).parse();
           if (a && a.content && a.textContent && a.textContent.trim().length > 200) {
@@ -78,7 +104,8 @@ enum ReaderPage {
               title: heading.title, kicker: heading.kicker, byline: a.byline || "",
               siteName: a.siteName || location.hostname, content: a.content,
               lang: a.lang || document.documentElement.lang || "",
-              words: a.textContent.trim().split(/\\s+/).length, published: published(a.publishedTime)
+              words: a.textContent.trim().split(/\\s+/).length, published: published(a.publishedTime),
+              image: leadImage(a.content)
             });
           }
         } catch (e) {}
@@ -88,7 +115,7 @@ enum ReaderPage {
         return JSON.stringify({
           title: document.title, byline: "", siteName: location.hostname,
           content: paras.map(function (p) { return "<p>" + esc(p) + "</p>"; }).join(""),
-          lang: document.documentElement.lang || "", published: published()
+          lang: document.documentElement.lang || "", published: published(), image: leadImage("")
         });
         })()
         """
@@ -96,6 +123,7 @@ enum ReaderPage {
 
     static func html(for article: Article, fontSize: Double) -> String {
         let byline = article.byline.isEmpty ? "" : "<div class=\"byline\">\(escape(article.byline))</div>"
+        let lead = article.image.flatMap { $0.isEmpty ? nil : "<figure class=\"lead\"><img src=\"\(escape($0))\" alt=\"\"></figure>" } ?? ""
         return """
         <!doctype html>
         <html lang="\(escape(article.lang))" style="--font-size: \(Int(fontSize))px">
@@ -113,6 +141,7 @@ enum ReaderPage {
         <h1 class="title">\(escape(article.title))</h1>
         \(byline)
         </header>
+        \(lead)
         <article>\(article.content)</article>
         </main>
         </body>
@@ -151,6 +180,8 @@ enum ReaderPage {
     a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
     img, video, svg, iframe { max-width: 100%; height: auto; }
     figure { margin: 1.6em 0; }
+    .lead { margin: 1.2em 0 2em; }
+    .lead img { display: block; width: 100%; border-radius: 8px; }
     figcaption { color: var(--muted); font-size: .8em; }
     blockquote { margin: 1.4em 0; padding-left: 1em; border-left: 3px solid var(--muted); color: var(--muted); }
     pre, code { font: .82em/1.5 ui-monospace, Menlo, monospace; }
@@ -218,6 +249,12 @@ enum ReaderPage {
         },
         setFontSize(px) { document.documentElement.style.setProperty("--font-size", px + "px"); }
       };
+
+      // The main picture can't load (the site refuses it): no empty frame.
+      document.querySelectorAll(".lead img").forEach(img => {
+        const drop = () => img.closest(".lead").remove();
+        if (img.complete && !img.naturalWidth) drop(); else img.addEventListener("error", drop);
+      });
 
       const post = message => window.webkit.messageHandlers.reader.postMessage(message);
 

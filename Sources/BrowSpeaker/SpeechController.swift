@@ -78,6 +78,16 @@ final class SpeechController {
         }
     }
 
+    /// 0…1, on top of the Mac's volume. Videos keep their own (`BrowserModel.videoVolume`).
+    var volume: Double = UserDefaults.standard.object(forKey: "speechVolume") as? Double ?? 1 {
+        didSet {
+            UserDefaults.standard.set(volume, forKey: "speechVolume")
+            applyVolume()
+            // A macOS voice has its sentences queued already: it changes at the next paragraph.
+            if state != .idle, engine === systemEngine { needsReplan = true }
+        }
+    }
+
     var pacing: Pacing = Pacing(rawValue: UserDefaults.standard.string(forKey: "pacing") ?? "") ?? .medium {
         didSet {
             UserDefaults.standard.set(pacing.rawValue, forKey: "pacing")
@@ -151,12 +161,18 @@ final class SpeechController {
                 failed: { [weak self] error in self?.fallBackToSystemVoice(after: error, in: name) }
             )
         }
+        applyVolume()
         replanObserver = NotificationCenter.default.addObserver(forName: Self.settingsChangedNotification,
                                                                 object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 if let self, self.state != .idle { self.needsReplan = true }
             }
         }
+    }
+
+    private func applyVolume() {
+        systemEngine.volume = volume
+        piperEngine.volume = volume
     }
 
     private func blockStarted(_ index: Int) {
