@@ -2,6 +2,8 @@
 
 # Talk to me Bro
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/stephanepoulin)
+
 [English](README.md) · **Français**
 
 Lecteur d'articles pour macOS : on lui envoie un article depuis son navigateur, il l'affiche sans pub ni
@@ -234,3 +236,11 @@ Le code et les identifiants internes gardent l'ancien nom (`BrowSpeaker`, `local
 [MIT](LICENSE). Inclut [Mozilla Readability](https://github.com/mozilla/readability)
 (`Resources/Readability.js`, Apache 2.0). Piper n'est pas inclus : l'app l'installe sur demande, sous sa
 propre licence ([GPL-3.0](https://github.com/OHF-Voice/piper1-gpl)).
+
+## Soutien
+
+Si Talk to me Bro repose vos yeux (il vous lit les articles), vous pouvez m'offrir un café.
+
+<a href="https://buymeacoffee.com/stephanepoulin"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="40"></a>
+
+Fait par [Stéphane Poulin](https://www.stephanepoulin.com).
