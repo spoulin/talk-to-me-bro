@@ -108,6 +108,13 @@ masqué. La barre du lecteur et la barre d'outils habituelles le pilotent : posi
 sont jouées sans le son (« Pub · son coupé » dans la barre) et le son revient pour la vidéo. À la fin de la vidéo, l'article
 suivant de la playlist démarre. Les pages vidéo ont un badge « Vidéo » dans À lire.
 
+**Musique pendant les pubs** (*Réglages › Vidéos*) : pendant qu'une pub passe sans le son, une radio joue à
+la place (un lien `.pls` ou `.m3u` comme `https://somafm.com/illstreet.pls`, ou l'adresse d'un flux), ou un
+fichier audio, ou un dossier de musique (« Pub · musique » dans la barre). Elle arrive et repart en fondu, et
+le son de la vidéo revient en fondu lui aussi. Les réglages donnent le volume de la musique (aussi dans 🔊
+pendant une vidéo) et la durée des fondus ; *Écouter* fait entendre la source quelques secondes. Une radio
+reprend au direct ; des fichiers reprennent où ils s'étaient arrêtés. Vide : le silence.
+
 Les liens **YouTube** (vidéos, Shorts, `youtu.be`) passent par le lecteur intégrable de YouTube en mode
 confidentialité (`youtube-nocookie.com`, comme le Duck Player de DuckDuckGo) : pas de page YouTube autour,
 pas de cookies de suivi, titre et chaîne venant de YouTube, et la même barre du lecteur. Une chaîne YouTube

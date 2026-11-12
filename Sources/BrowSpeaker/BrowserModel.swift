@@ -23,13 +23,26 @@ final class BrowserModel: NSObject {
 
     private(set) var phase: Phase = .empty
     /// The open article is a video page, shown with its own player.
-    private(set) var isVideo = false
+    private(set) var isVideo = false {
+        didSet { if !isVideo { videoAd = false } }
+    }
     /// The video's position, length and state, for the player bar.
     private(set) var videoTime = 0.0
     private(set) var videoDuration = 0.0
     private(set) var videoPlaying = false
-    /// An ad is playing (and muted).
-    private(set) var videoAd = false
+    /// An ad is playing (and muted), with the music chosen in Settings, if any.
+    private(set) var videoAd = false {
+        didSet {
+            guard videoAd != oldValue else { return }
+            if videoAd {
+                // How the video's sound comes back at the end of this ad.
+                webView.evaluateJavaScript(VideoPage.adFade(AdMusic.shared.fadeSeconds), in: nil, in: .defaultClient)
+                AdMusic.shared.adStarted()
+            } else {
+                AdMusic.shared.adEnded()
+            }
+        }
+    }
     /// 0…1, apart from the reading's: videos (YouTube above all) are often louder than the voices.
     var videoVolume: Double = UserDefaults.standard.object(forKey: "videoVolume") as? Double ?? 1 {
         didSet {

@@ -106,6 +106,12 @@ volume, next article (the site's own controls work too). The video starts by its
 comes back for the video. When the video ends, the next article
 of the playlist starts. Video pages carry a "Video" badge in To Read.
 
+**Music during ads** (*Settings › Videos*): while an ad plays without sound, a radio plays instead (a `.pls`
+or `.m3u` link such as `https://somafm.com/illstreet.pls`, or a stream address), or an audio file, or a folder
+of music ("Ad · music" in the bar). It fades in and out, and the video's sound comes back in a fade too.
+Settings hold the music's volume (also in 🔊 during a video) and the fade time; *Listen* plays the source for a
+few seconds. A radio comes back at its live point; files go on where they stopped. Empty: silence.
+
 **YouTube** links (videos, Shorts, `youtu.be`) play in YouTube's embeddable player in privacy mode
 (`youtube-nocookie.com`, like DuckDuckGo's Duck Player): no YouTube page around it, no tracking cookies,
 title and channel from YouTube, and the same player bar. A YouTube channel added as a source uses its RSS

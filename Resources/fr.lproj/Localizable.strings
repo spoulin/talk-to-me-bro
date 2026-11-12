@@ -227,3 +227,15 @@
 "Random takes another transition for each article." = "Aléatoire prend une transition différente pour chaque article.";
 "Slow zoom on the pictures (Ken Burns effect)" = "Zoom lent sur les images (effet Ken Burns)";
 "Show the title just after the picture" = "Faire apparaître le titre juste après l’image";
+"Music during ads" = "Musique pendant les pubs";
+"Source" = "Source";
+"Choose…" = "Choisir…";
+"Listen" = "Écouter";
+"Volume of the music" = "Volume de la musique";
+"Fades (music, and the video coming back)" = "Fondus (musique, et retour de la vidéo)";
+"No fade" = "Aucun";
+"While a video page plays an ad without sound, this plays instead: a radio (a .pls or .m3u link, or its stream address), an audio file or a folder of music. Leave it empty for silence." = "Pendant qu’une page vidéo passe une pub sans le son, ceci joue à la place : une radio (un lien .pls ou .m3u, ou l’adresse de son flux), un fichier audio ou un dossier de musique. Vide : le silence.";
+"An audio file, or a folder of music" = "Un fichier audio, ou un dossier de musique";
+"Nothing to play at this address." = "Rien à jouer à cette adresse.";
+"This source doesn't play." = "Cette source ne joue pas.";
+"Ad · music" = "Pub · musique";

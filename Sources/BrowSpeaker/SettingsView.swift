@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Settings (⌘,): optional Piper voices, and the pronunciation dictionary.
 struct SettingsView: View {
@@ -25,6 +26,9 @@ struct SettingsView: View {
 
             SlideshowSettings()
                 .tabItem { Label("Slideshow", systemImage: "play.rectangle.on.rectangle") }
+
+            VideoSettings()
+                .tabItem { Label("Videos", systemImage: "film") }
         }
         .frame(width: 580, height: 540)
     }
@@ -117,6 +121,50 @@ private struct SlideshowSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Music during ads, on video pages: a radio, a stream, a file or a folder, with its volume and fades.
+private struct VideoSettings: View {
+    @Bindable private var music = AdMusic.shared
+
+    var body: some View {
+        Form {
+            Section {
+                HStack {
+                    TextField("Source", text: $music.source, prompt: Text(verbatim: "https://somafm.com/illstreet.pls"))
+                    Button("Choose…", action: choose)
+                    Button("Listen") { music.preview() }
+                        .disabled(!music.hasSource)
+                }
+                if let problem = music.problem {
+                    Text(problem).font(.caption).foregroundStyle(.red)
+                }
+                LabeledContent("Volume of the music") {
+                    Slider(value: $music.volume, in: 0...1)
+                }
+                Picker("Fades (music, and the video coming back)", selection: $music.fadeSeconds) {
+                    Text("No fade").tag(0.0)
+                    ForEach([0.5, 1, 2, 3], id: \.self) { Text(verbatim: "\($0.formatted()) s").tag($0) }
+                }
+            } header: {
+                Text("Music during ads")
+            } footer: {
+                Text("While a video page plays an ad without sound, this plays instead: a radio (a .pls or .m3u link, or its stream address), an audio file or a folder of music. Leave it empty for silence.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func choose() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowedContentTypes = [.audio, .folder]
+        panel.message = String(localized: "An audio file, or a folder of music")
+        if panel.runModal() == .OK, let url = panel.url { music.source = url.path(percentEncoded: false) }
     }
 }
 

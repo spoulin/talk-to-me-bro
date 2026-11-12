@@ -1043,7 +1043,9 @@ private struct PlayerBar: View {
                                 .help(date.formatted(date: .long, time: .shortened))
                         }
                         if model.isVideo && model.videoAd {
-                            Label("Ad · muted", systemImage: "speaker.slash.fill")
+                            let music = AdMusic.shared.isPlaying
+                            Label(music ? LocalizedStringKey("Ad · music") : LocalizedStringKey("Ad · muted"),
+                                  systemImage: music ? "music.note" : "speaker.slash.fill")
                                 .font(.caption2.weight(.semibold))
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(.orange.opacity(0.25), in: Capsule())
@@ -1152,6 +1154,7 @@ private struct SpeedMenu: View {
 private struct VolumeButton: View {
     @Bindable var model: BrowserModel
     @Bindable var speech: SpeechController
+    @Bindable private var music = AdMusic.shared
     @State private var shows = false
 
     var body: some View {
@@ -1171,6 +1174,15 @@ private struct VolumeButton: View {
                 Text("Reading and videos each keep their own volume.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if model.isVideo && music.hasSource {
+                    Divider().padding(.vertical, 4)
+                    Text("Music during ads").font(.headline)
+                    HStack {
+                        Image(systemName: "speaker.fill").foregroundStyle(.secondary)
+                        Slider(value: $music.volume, in: 0...1)
+                        Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
+                    }
+                }
             }
             .padding()
             .frame(width: 280)

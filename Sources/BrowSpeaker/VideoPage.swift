@@ -101,13 +101,29 @@ enum VideoPage {
     """
 
     /// Installed with `focus`: mutes the page while an ad plays and restores the
-    /// sound after. Ad players turn their sound back on when they start, so this
-    /// runs in the page itself, four times a second and on every volume change.
-    /// An ad is spotted by its label in the player ("Publicité 1 de 2", "Ad 1 of
-    /// 2") or the classes ad players use.
+    /// sound after, in a fade (`adFade`). Ad players turn their sound back on when
+    /// they start, so this runs in the page itself, four times a second and on
+    /// every volume change. An ad is spotted by its label in the player
+    /// ("Publicité 1 de 2", "Ad 1 of 2") or the classes ad players use.
     fileprivate static let adGuard = """
       if (!window.__bsAdGuard) {
         window.__bsAdGuard = true;
+        const fadeTargets = new WeakMap();
+        const fadeIn = v => {
+          const ms = Number(document.documentElement.dataset.bsAdFade || 0);
+          if (ms <= 0) { v.muted = false; return; }
+          const target = fadeTargets.has(v) ? fadeTargets.get(v) : v.volume;
+          fadeTargets.set(v, target);
+          v.volume = 0;
+          v.muted = false;
+          const start = Date.now();
+          const step = () => {
+            const progress = Math.min(1, (Date.now() - start) / ms);
+            v.volume = target * progress;
+            if (progress < 1) setTimeout(step, 40); else fadeTargets.delete(v);
+          };
+          step();
+        };
         const isAd = () => {
           const box = document.querySelector(".bs-video-box") || document.body;
           return /publicit|annonce|advertis|\\bad \\d|commanditaire|sponsor/i.test(box.innerText || "")
@@ -121,7 +137,7 @@ enum VideoPage {
               if (!v.dataset.bsAdMute) v.dataset.bsAdMute = v.muted ? "already" : "yes";
               if (!v.muted) v.muted = true;
             } else if (v.dataset.bsAdMute) {
-              if (v.dataset.bsAdMute === "yes") v.muted = false;
+              if (v.dataset.bsAdMute === "yes") fadeIn(v);
               delete v.dataset.bsAdMute;
             }
           }
@@ -135,6 +151,11 @@ enum VideoPage {
 
     /// "true" while an ad plays (and is muted).
     static let adPlaying = "String(!!window.__bsAdActive)"
+
+    /// How long the video's sound takes to come back after an ad (0: at once).
+    static func adFade(_ seconds: Double) -> String {
+        "document.documentElement.dataset.bsAdFade = '\(Int(seconds * 1000))'"
+    }
 
     /// While a video plays, WebKit answers the media keys itself (⏯, seeking),
     /// not the app: ⏭ must be asked of the page, in every frame since the
