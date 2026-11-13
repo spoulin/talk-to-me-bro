@@ -30,6 +30,13 @@ struct BrowserCommands: Commands {
     @FocusedValue(\.browser) private var model
 
     var body: some Commands {
+        // About Talk to me Bro (just above) shows the version; new versions are GitHub releases.
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") {
+                NSWorkspace.shared.open(URL(string: "https://github.com/spoulin/talk-to-me-bro/releases/latest")!)
+            }
+        }
+
         CommandGroup(after: .newItem) {
             Divider()
             Button("Listen to Copied Link") { model?.openFromPasteboard() }

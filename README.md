@@ -6,8 +6,33 @@
 
 **English** · [Français](README.fr.md)
 
+[![Download Talk to me Bro for macOS](https://img.shields.io/badge/Download-Talk%20to%20me%20Bro%20for%20macOS-C8621A?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/spoulin/talk-to-me-bro/releases/latest/download/TalkToMeBro.dmg)
+
+For macOS 14 or later, on Apple silicon and Intel Macs. See [Install](#install).
+
 An article player for macOS: send it an article from your browser, it shows the text without ads or
 clutter (like "Just Read") and **reads it aloud**, with a macOS voice or a local Piper voice.
+
+## Install
+
+1. Click **Download** above to get `TalkToMeBro.dmg`, then open it.
+2. Drag Talk to me Bro onto Applications.
+3. Open Talk to me Bro from Applications. The first time, macOS says it can't check it, because it
+   doesn't come from the App Store or from a developer known to Apple. Click **Done**, not Move
+   to Trash.
+4. Open **System Settings › Privacy & Security**, scroll down to **Security**, and click
+   **Open Anyway** next to the message about Talk to me Bro. Confirm with your password or Touch ID,
+   then click **Open Anyway** once more.
+
+   Clicked Move to Trash by mistake? Open `TalkToMeBro.dmg` again, drag Talk to me Bro onto
+   Applications, and start over at step 3.
+
+That's needed once only: afterwards, Talk to me Bro opens like any other app. Opening it once also
+adds **Read with Talk to me Bro** to the Share menus (see [Share to Talk to me Bro](#share-to-talk-to-me-bro)).
+
+To update, choose **Talk to me Bro › Check for Updates…**: it opens the page of the latest version.
+Download it and drag it onto Applications again, replacing the old one. Your history, playlist and
+settings stay as they were.
 
 ## Build
 
@@ -28,6 +53,23 @@ npm run install-app
 ```
 
 Without Node: `scripts/install-app.sh`.
+
+### Releases
+
+A version tag publishes a release: the Release workflow (`.github/workflows/release.yml`) builds
+Talk to me Bro for Apple silicon and Intel, makes `TalkToMeBro.dmg` and attaches it to a GitHub
+release, which the Download link above always points to.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+To make the disk image on your Mac: `pip3 install dmgbuild`, then
+`UNIVERSAL=1 scripts/build-app.sh` and
+`NAME="Talk to me Bro" tools/make-dmg.sh "build/Talk to me Bro.app" TalkToMeBro.dmg`. Its background
+is drawn by `tools/make-dmg-background.swift`, and its layout is in `tools/dmg-settings.py`. The app
+is signed ad hoc, not notarized, hence the Open Anyway step of the first launch.
 
 ## Usage
 

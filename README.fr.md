@@ -6,8 +6,33 @@
 
 [English](README.md) · **Français**
 
+[![Télécharger Talk to me Bro pour macOS](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Talk%20to%20me%20Bro%20pour%20macOS-C8621A?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/spoulin/talk-to-me-bro/releases/latest/download/TalkToMeBro.dmg)
+
+Pour macOS 14 ou plus récent, sur les Mac Apple silicon et Intel. Voir [Installer](#installer).
+
 Lecteur d'articles pour macOS : on lui envoie un article depuis son navigateur, il l'affiche sans pub ni
 mise en page (façon « Just Read ») et le **lit à voix haute**, avec la voix de macOS ou une voix Piper locale.
+
+## Installer
+
+1. Cliquez sur **Télécharger** ci-dessus pour obtenir `TalkToMeBro.dmg`, puis ouvrez-le.
+2. Glissez Talk to me Bro sur Applications.
+3. Ouvrez Talk to me Bro depuis Applications. La première fois, macOS dit qu'il ne peut pas le
+   vérifier, parce qu'il ne vient pas de l'App Store ni d'un développeur connu d'Apple. Cliquez sur
+   **Terminé** (Done), pas sur Placer dans la corbeille.
+4. Ouvrez **Réglages Système › Confidentialité et sécurité**, descendez jusqu'à **Sécurité**, et cliquez
+   sur **Ouvrir quand même** à côté du message sur Talk to me Bro. Confirmez avec votre mot de passe ou
+   Touch ID, puis cliquez encore sur **Ouvrir quand même**.
+
+   Vous avez cliqué sur Placer dans la corbeille par erreur ? Ouvrez de nouveau `TalkToMeBro.dmg`,
+   glissez Talk to me Bro sur Applications et reprenez à l'étape 3.
+
+Il ne faut le faire qu'une fois : ensuite, Talk to me Bro s'ouvre comme n'importe quelle app. L'ouvrir
+une fois ajoute aussi **Lire avec Talk to me Bro** aux menus Partager.
+
+Pour mettre à jour, choisissez **Talk to me Bro › Rechercher des mises à jour…** : la page de la
+dernière version s'ouvre. Téléchargez-la et glissez-la de nouveau sur Applications, en remplaçant
+l'ancienne. L'historique, la liste de lecture et les réglages restent tels quels.
 
 ## Construire
 
@@ -28,6 +53,23 @@ npm run install-app
 ```
 
 Sans Node : `scripts/install-app.sh`.
+
+### Versions publiées
+
+Un tag de version publie une version : le workflow Release (`.github/workflows/release.yml`)
+construit Talk to me Bro pour Apple silicon et Intel, fabrique `TalkToMeBro.dmg` et le joint à une
+release GitHub, vers laquelle pointe toujours le lien Télécharger ci-dessus.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Pour fabriquer l'image disque sur votre Mac : `pip3 install dmgbuild`, puis
+`UNIVERSAL=1 scripts/build-app.sh` et
+`NAME="Talk to me Bro" tools/make-dmg.sh "build/Talk to me Bro.app" TalkToMeBro.dmg`. Son fond est
+dessiné par `tools/make-dmg-background.swift`, et sa disposition est dans `tools/dmg-settings.py`.
+L'app est signée ad hoc, sans notarisation, d'où l'étape « Ouvrir quand même » au premier lancement.
 
 ## Utilisation
 

@@ -1,12 +1,29 @@
 #!/bin/bash
 # Builds "build/Talk to me Bro.app" from the Swift package.
 # Usage: scripts/build-app.sh [release|debug]
+#
+# VERSION=1.2.0 scripts/build-app.sh  sets the version shown in the app; without it, the latest
+#                                     git tag (v1.2.0 gives 1.2.0), or the one in Support/Info.plist.
+# UNIVERSAL=1 scripts/build-app.sh    builds for both Apple silicon and Intel Macs, as releases do.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG="${1:-release}"
-swift build -c "$CONFIG"
-BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
+PLISTBUDDY=/usr/libexec/PlistBuddy
+VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)}"
+VERSION="${VERSION:-$($PLISTBUDDY -c 'Print CFBundleShortVersionString' Support/Info.plist)}"
+BUILD="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
+
+if [ -n "${UNIVERSAL:-}" ]; then
+    ARCHS=(arm64 x86_64)
+    SWIFT_ARCHS=(--arch arm64 --arch x86_64)
+else
+    ARCHS=("$(uname -m)")
+    SWIFT_ARCHS=()
+fi
+
+swift build -c "$CONFIG" ${SWIFT_ARCHS[@]+"${SWIFT_ARCHS[@]}"}
+BIN_DIR="$(swift build -c "$CONFIG" ${SWIFT_ARCHS[@]+"${SWIFT_ARCHS[@]}"} --show-bin-path)"
 
 APP="build/Talk to me Bro.app"
 rm -rf "$APP"
@@ -17,19 +34,32 @@ cp Resources/Readability.js "$APP/Contents/Resources/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"
 
-# Share extension ("Share › Lire avec Talk to me Bro"), built outside SwiftPM.
+# Share extension ("Share › Lire avec Talk to me Bro"), built outside SwiftPM, once per
+# architecture, then joined into one binary.
 EXT="$APP/Contents/PlugIns/BrowSpeakerShare.appex"
 mkdir -p "$EXT/Contents/MacOS"
 OPT=$([ "$CONFIG" = release ] && echo -O || echo -Onone)
-swiftc $OPT -module-name BrowSpeakerShare -application-extension \
-    -sdk "$(xcrun --show-sdk-path)" -target "$(uname -m)-apple-macos14.0" \
-    -Xlinker -e -Xlinker _NSExtensionMain \
-    ShareExtension/ShareViewController.swift -o "$EXT/Contents/MacOS/BrowSpeakerShare"
+SLICES=()
+for ARCH in "${ARCHS[@]}"; do
+    OUT="build/BrowSpeakerShare-$ARCH"
+    swiftc $OPT -module-name BrowSpeakerShare -application-extension \
+        -sdk "$(xcrun --show-sdk-path)" -target "$ARCH-apple-macos14.0" \
+        -Xlinker -e -Xlinker _NSExtensionMain \
+        ShareExtension/ShareViewController.swift -o "$OUT"
+    SLICES+=("$OUT")
+done
+lipo -create "${SLICES[@]}" -output "$EXT/Contents/MacOS/BrowSpeakerShare"
+rm -f "${SLICES[@]}"
 cp ShareExtension/Info.plist "$EXT/Contents/"
 mkdir -p "$EXT/Contents/Resources"
 cp -R ShareExtension/*.lproj "$EXT/Contents/Resources/"
-codesign --force --sign - --entitlements ShareExtension/ShareExtension.entitlements "$EXT"
 
+# The app and its extension show the same version.
+for PLIST in "$APP/Contents/Info.plist" "$EXT/Contents/Info.plist"; do
+    $PLISTBUDDY -c "Set :CFBundleShortVersionString $VERSION" -c "Set :CFBundleVersion $BUILD" "$PLIST"
+done
+
+codesign --force --sign - --entitlements ShareExtension/ShareExtension.entitlements "$EXT"
 codesign --force --sign - "$APP"
 
-echo "✓ $APP"
+echo "✓ $APP $VERSION ($BUILD)"
