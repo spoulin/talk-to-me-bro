@@ -17,12 +17,20 @@ clutter (like "Just Read") and **reads it aloud**, with a macOS voice or a local
 
 1. Click **Download** above to get `TalkToMeBro.dmg`, then open it.
 2. Drag Talk to me Bro onto Applications.
+
+   <img src="Resources/install-dmg.png" width="440" alt="The Talk to me Bro disk image: drag Talk to me Bro onto Applications">
+
 3. Open Talk to me Bro from Applications. The first time, macOS says it can't check it, because it
    doesn't come from the App Store or from a developer known to Apple. Click **Done**, not Move
    to Trash.
+
+   <img src="Resources/install-not-opened.png" width="260" alt="macOS: Talk to me Bro.app Not Opened, with Move to Trash and Done">
+
 4. Open **System Settings › Privacy & Security**, scroll down to **Security**, and click
    **Open Anyway** next to the message about Talk to me Bro. Confirm with your password or Touch ID,
    then click **Open Anyway** once more.
+
+   <img src="Resources/install-open-anyway.png" width="440" alt="System Settings, Privacy & Security: Talk to me Bro.app was blocked to protect your Mac, Open Anyway">
 
    Clicked Move to Trash by mistake? Open `TalkToMeBro.dmg` again, drag Talk to me Bro onto
    Applications, and start over at step 3.

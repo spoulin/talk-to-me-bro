@@ -17,12 +17,20 @@ mise en page (façon « Just Read ») et le **lit à voix haute**, avec la voix 
 
 1. Cliquez sur **Télécharger** ci-dessus pour obtenir `TalkToMeBro.dmg`, puis ouvrez-le.
 2. Glissez Talk to me Bro sur Applications.
+
+   <img src="Resources/install-dmg.png" width="440" alt="L'image disque de Talk to me Bro : glisser Talk to me Bro sur Applications">
+
 3. Ouvrez Talk to me Bro depuis Applications. La première fois, macOS dit qu'il ne peut pas le
    vérifier, parce qu'il ne vient pas de l'App Store ni d'un développeur connu d'Apple. Cliquez sur
    **Terminé** (Done), pas sur Placer dans la corbeille.
+
+   <img src="Resources/install-not-opened.png" width="260" alt="macOS : Talk to me Bro.app n'a pas été ouvert, avec Move to Trash et Done">
+
 4. Ouvrez **Réglages Système › Confidentialité et sécurité**, descendez jusqu'à **Sécurité**, et cliquez
    sur **Ouvrir quand même** à côté du message sur Talk to me Bro. Confirmez avec votre mot de passe ou
    Touch ID, puis cliquez encore sur **Ouvrir quand même**.
+
+   <img src="Resources/install-open-anyway.png" width="440" alt="Réglages Système, Confidentialité et sécurité : Talk to me Bro.app a été bloqué, Ouvrir quand même">
 
    Vous avez cliqué sur Placer dans la corbeille par erreur ? Ouvrez de nouveau `TalkToMeBro.dmg`,
    glissez Talk to me Bro sur Applications et reprenez à l'étape 3.
