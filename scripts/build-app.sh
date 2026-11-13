@@ -16,19 +16,22 @@ BUILD="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 
 if [ -n "${UNIVERSAL:-}" ]; then
     ARCHS=(arm64 x86_64)
-    SWIFT_ARCHS=(--arch arm64 --arch x86_64)
 else
     ARCHS=("$(uname -m)")
-    SWIFT_ARCHS=()
 fi
 
-swift build -c "$CONFIG" ${SWIFT_ARCHS[@]+"${SWIFT_ARCHS[@]}"}
-BIN_DIR="$(swift build -c "$CONFIG" ${SWIFT_ARCHS[@]+"${SWIFT_ARCHS[@]}"} --show-bin-path)"
+# One build per architecture, joined with lipo. (`swift build --arch arm64 --arch x86_64` goes
+# through Xcode's build system, which fails on this Swift 6 package with GitHub's Xcode.)
+APP_SLICES=()
+for ARCH in "${ARCHS[@]}"; do
+    swift build -c "$CONFIG" --arch "$ARCH"
+    APP_SLICES+=("$(swift build -c "$CONFIG" --arch "$ARCH" --show-bin-path)/BrowSpeaker")
+done
 
 APP="build/Talk to me Bro.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/BrowSpeaker" "$APP/Contents/MacOS/"
+lipo -create "${APP_SLICES[@]}" -output "$APP/Contents/MacOS/BrowSpeaker"
 cp Support/Info.plist "$APP/Contents/"
 cp Resources/Readability.js "$APP/Contents/Resources/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
