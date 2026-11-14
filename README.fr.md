@@ -192,8 +192,9 @@ retirer. L'écran d'accueil montre les cinq derniers.
 
 ## Voix par type
 
-**Réglages › Voix › Voix par type** : une voix différente pour les titres, les légendes de photos et les
-citations (« Même voix que le texte » par défaut), en mélangeant librement voix macOS et Piper.
+**Réglages › Voix › Voix par type** : la voix du texte (aussi dans le menu des voix de la barre d'outils
+pendant la lecture), et une voix différente pour les titres, les légendes de photos et les citations
+(« Même voix que le texte » par défaut), en mélangeant librement voix macOS, Piper et Siri.
 *Annoncer les légendes* dit « Légende : » (dans la langue de l'article) avant une légende, une seule fois
 pour plusieurs légendes de suite.
 
@@ -202,14 +203,23 @@ celui en cours.
 
 ## Choix des voix
 
-Deux moteurs, choisis dans le menu des voix de la barre d'outils ; tout reste sur le Mac :
+Trois moteurs, choisis dans le menu des voix de la barre d'outils ; tout reste sur le Mac :
 
 | Moteur | Qualité | Coût / compte | Confidentialité |
 | --- | --- | --- | --- |
 | **macOS** (par défaut) | Standard à Premium selon les voix téléchargées | Gratuit, rien à installer | Local |
 | **Piper** (optionnel) | Neuronale, meilleure que les voix de base | Gratuit, sans compte | Local |
+| **Siri** (si c'est la voix du système) | Les voix neuronales de Siri | Gratuit, choisie dans *Contenu énoncé* | Local |
 
-Si Piper échoue, la lecture continue avec la voix macOS. Ajouter un service de voix en ligne
+**Siri** : Apple ne donne pas accès aux voix Siri par l'API vocale qu'utilisent les apps aujourd'hui. Quand la
+voix réglée dans *Réglages Système › Accessibilité › Contenu énoncé* est une voix Siri, *Voix du système*
+dans le menu des voix lit avec elle par l'ancienne API vocale de macOS (celle de `say`). Elle peut aussi
+lire les titres, les légendes ou les citations (*Voix du système — Siri* dans *Voix par type*). Seule
+cette voix Siri est disponible : on ne peut pas choisir une voix Siri par son nom. Chaque phrase est
+générée, puis jouée comme un extrait Piper : l'effet sur la voix s'applique, le mot surligné est estimé,
+et un passage lu par Siri met une seconde ou deux à démarrer.
+
+Si Piper ou Siri échoue, la lecture continue avec une voix macOS. Ajouter un service de voix en ligne
 (Azure, OpenAI, ElevenLabs…) = un `ClipSynthesizer` de plus, sur le modèle de `PiperSynthesizer`
 (un moteur Azure complet existe dans le premier commit de l'historique git).
 
@@ -228,7 +238,8 @@ Si Piper échoue, la lecture continue avec la voix macOS. Ajouter un service de 
 - En français, Piper n'a que des voix de France (pas de voix québécoise).
 - Le mot surligné est estimé (Piper ne donne pas le minutage des mots), le paragraphe est exact.
 - **Effet sur la voix** (Réglages, onglet Voix) : Chaleur, Pièce, Studio, Salle, Cathédrale ou Écho,
-  avec son intensité, pour donner du corps à la voix. Les changements s'entendent tout de suite.
+  avec son intensité, pour donner du corps à la voix (voix Siri comprises). Les changements
+  s'entendent tout de suite.
 
 ## Partager vers Talk to me Bro
 
@@ -270,10 +281,10 @@ existante, passe en mode lecture et la lecture commence.
   relue à chaque lecture.
 - `SpeechScript` : découpe les paragraphes en segments (phrases, pauses) et applique le dictionnaire de
   prononciation, en gardant le lien avec le texte de l'article pour le surlignage.
-- `ClipSpeechEngine` : moteurs qui produisent un fichier audio par segment (Piper), avec
+- `ClipSpeechEngine` : moteurs qui produisent un fichier audio par segment (Piper, Siri), avec
   préchargement des suivants.
-- Les voix **Siri** ne sont pas accessibles aux applications tierces : dans ce cas, Talk to me Bro
-  prend une voix de la même langue (indiqué « remplacement » dans le menu).
+- `SiriSynthesizer` : génère la voix de *Contenu énoncé*, voix Siri comprises, avec l'ancienne API
+  vocale (`NewSpeechChannel`, `SpeakCFString`) ; AVSpeechSynthesizer ne propose pas les voix Siri.
 
 L'interface est en anglais par défaut et en français si le Mac est en français
 (`Resources/fr.lproj`, `ShareExtension/fr.lproj`).

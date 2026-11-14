@@ -187,8 +187,9 @@ last five.
 
 ## Voices by type
 
-**Settings › Voices › Voices by type**: a different voice for titles, photo captions and quotes ("Same
-as text" by default), mixing macOS and Piper voices freely. *Announce captions* says "Caption:" (in the
+**Settings › Voices › Voices by type**: the voice of the text (also in the toolbar's voice menu while
+reading), and a different voice for titles, photo captions and quotes ("Same as text" by default), mixing
+macOS, Piper and Siri voices freely. *Announce captions* says "Caption:" (in the
 article's language) before a caption, once for several captions in a row.
 
 Changes to the dictionary and to the voices by type apply from the next paragraph, without cutting the
@@ -196,14 +197,22 @@ current one.
 
 ## Voices
 
-Two engines, chosen from the voice menu in the toolbar; everything stays on the Mac:
+Three engines, chosen from the voice menu in the toolbar; everything stays on the Mac:
 
 | Engine | Quality | Cost / account | Privacy |
 | --- | --- | --- | --- |
 | **macOS** (default) | Standard to Premium, depending on downloaded voices | Free, nothing to install | Local |
 | **Piper** (optional) | Neural, better than the basic voices | Free, no account | Local |
+| **Siri** (when it is the system voice) | Siri's neural voices | Free, chosen in *Spoken Content* | Local |
 
-If Piper fails, reading continues with the macOS voice. To add an online voice service (Azure, OpenAI,
+**Siri**: Apple keeps Siri voices out of the speech API apps use today. When the voice set in *System
+Settings › Accessibility › Spoken Content* is a Siri voice, *System voice* in the voice menu reads with
+it through the older Speech Synthesis Manager (what `say` uses). It can also read titles, captions or
+quotes (*System voice — Siri* in *Voices by type*). Only that one Siri voice is available: Siri voices
+can't be picked by name. Each sentence is rendered, then played like a Piper clip: the voice effect
+applies, the highlighted word is estimated, and a Siri passage takes a second or two to start.
+
+If Piper or Siri fails, reading continues with a macOS voice. To add an online voice service (Azure, OpenAI,
 ElevenLabs…), write another `ClipSynthesizer`, modeled on `PiperSynthesizer` (a complete Azure engine
 is in the first commit of the git history).
 
@@ -222,7 +231,7 @@ is in the first commit of the git history).
 - The voice list follows the system speech language. In French, Piper only has voices from France.
 - The highlighted word is estimated (Piper doesn't report word timings); the paragraph is exact.
 - **Voice effect** (Settings, Voices tab): Warmth, Room, Studio, Hall, Cathedral or Echo, with its
-  amount, to give the voice more body. Changes are heard right away.
+  amount, to give the voice more body (Siri voices too). Changes are heard right away.
 
 ## Share to Talk to me Bro
 
@@ -264,10 +273,10 @@ reading starts.
   read again at each playback.
 - `SpeechScript`: splits paragraphs into segments (sentences, pauses) and applies the pronunciation
   dictionary, keeping a map back to the article text for highlighting.
-- `ClipSpeechEngine`: engines that produce one audio file per segment (Piper), fetching the next
-  ones while the current one plays.
-- **Siri** voices aren't available to third-party apps: when one is selected, the app uses another voice
-  of the same language (shown as "fallback" in the menu).
+- `ClipSpeechEngine`: engines that produce one audio file per segment (Piper, Siri), fetching the
+  next ones while the current one plays.
+- `SiriSynthesizer`: renders the Spoken Content voice, Siri voices included, with the Speech Synthesis
+  Manager (`NewSpeechChannel`, `SpeakCFString`); AVSpeechSynthesizer doesn't offer Siri voices.
 
 The interface is in English by default and in French when the Mac is set to French
 (`Resources/fr.lproj`, `ShareExtension/fr.lproj`). To add a language, add a `<lang>.lproj` folder with

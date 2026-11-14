@@ -111,7 +111,7 @@
 "Same as text" = "Même voix que le texte";
 "Announce captions (“Caption: …”)" = "Annoncer les légendes (« Légende : … »)";
 "Caption:" = "Légende :";
-"The text voice is chosen in the toolbar. Changes apply from the next paragraph." = "La voix du texte se choisit dans la barre d’outils. Les changements s’appliquent dès le paragraphe suivant.";
+"Titles, captions and quotes can have their own voice; changes apply from the next paragraph. The text voice is also in the toolbar while reading." = "Les titres, les légendes et les citations peuvent avoir leur propre voix ; les changements s’appliquent dès le paragraphe suivant. La voix du texte est aussi dans la barre d’outils pendant la lecture.";
 
 /* Voice effect */
 "Voice effect" = "Effet sur la voix";
@@ -124,7 +124,7 @@
 "Hall" = "Salle";
 "Cathedral" = "Cathédrale";
 "Echo" = "Écho";
-"Gives the voice more body. Piper voices only; changes are heard right away." = "Donne du corps à la voix. Voix Piper seulement ; les changements s’entendent tout de suite.";
+"Gives the voice more body. Piper and Siri voices only; changes are heard right away." = "Donne du corps à la voix. Voix Piper et Siri seulement ; les changements s’entendent tout de suite.";
 
 /* History */
 "History" = "Historique";
@@ -240,3 +240,6 @@
 "Nothing to play at this address." = "Rien à jouer à cette adresse.";
 "This source doesn't play." = "Cette source ne joue pas.";
 "Ad · music" = "Pub · musique";
+"The system voice failed (error %lld)." = "La voix du système a échoué (erreur %lld).";
+"The system voice didn't answer." = "La voix du système n’a pas répondu.";
+"Text" = "Texte";

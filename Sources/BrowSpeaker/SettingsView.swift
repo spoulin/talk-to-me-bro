@@ -34,13 +34,16 @@ struct SettingsView: View {
     }
 }
 
-/// A different voice for titles, captions and quotes, so they stand out from the story.
+/// The voice of the text, and a different one for titles, captions and quotes,
+/// so they stand out from the story.
 private struct VoiceRolesSettings: View {
     @Bindable private var roles = VoiceRoles.shared
+    @Bindable private var text = TextVoice.shared
     private var piper = PiperService.shared
 
     var body: some View {
         Section {
+            textPicker
             picker("Titles", selection: $roles.title)
             picker("Photo captions", selection: $roles.caption)
             picker("Quotes", selection: $roles.quote)
@@ -48,9 +51,33 @@ private struct VoiceRolesSettings: View {
         } header: {
             Text("Voices by type")
         } footer: {
-            Text("The text voice is chosen in the toolbar. Changes apply from the next paragraph.")
+            Text("Titles, captions and quotes can have their own voice; changes apply from the next paragraph. The text voice is also in the toolbar while reading.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    /// The same choices as the toolbar's voice menu.
+    private var textPicker: some View {
+        let voices = AVVoices.installed()
+        return Picker("Text", selection: $text.key) {
+            Text("System voice — \(SystemSpeechEngine.systemVoiceDescription)").tag(String?.none)
+            Divider()
+            ForEach(voices.main) { voice in
+                Text(voice.label).tag(Optional(voice.key))
+            }
+            if !piper.voices.isEmpty {
+                Divider()
+                ForEach(piper.voices) { voice in
+                    Text(voice.label).tag(Optional(voice.key))
+                }
+            }
+            Divider()
+            Section("Other Languages") {
+                ForEach(voices.others) { voice in
+                    Text(voice.label).tag(Optional(voice.key))
+                }
+            }
         }
     }
 
@@ -58,6 +85,9 @@ private struct VoiceRolesSettings: View {
         Picker(title, selection: selection) {
             Text("Same as text").tag(String?.none)
             Divider()
+            if SiriVoice.isSystemVoice {
+                Text("System voice — \(SiriVoice.label)").tag(Optional(Voice.siriKey))
+            }
             ForEach(AVVoices.installed().main) { voice in
                 Text(voice.label).tag(Optional(voice.key))
             }
@@ -87,7 +117,7 @@ private struct VoiceEffectSettings: View {
         } header: {
             Text("Voice effect")
         } footer: {
-            Text("Gives the voice more body. Piper voices only; changes are heard right away.")
+            Text("Gives the voice more body. Piper and Siri voices only; changes are heard right away.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

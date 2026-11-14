@@ -92,6 +92,7 @@ final class SystemSpeechEngine: NSObject, SpeechEngine {
     }
 
     static var systemVoiceDescription: String {
+        if SiriVoice.isSystemVoice { return SiriVoice.label }
         guard let voice = systemVoice() else { return String(localized: "Default voice") }
         let exact = voice.identifier == NSSpeechSynthesizer.defaultVoice.rawValue
         return AVVoices.label(for: voice) + (exact ? "" : String(localized: " — fallback"))

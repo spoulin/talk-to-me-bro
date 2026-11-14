@@ -96,17 +96,18 @@ final class SpeechController {
     }
 
     /// The chosen voice as "engine:id" (see `Voice.key`); nil follows the Spoken Content voice.
-    var voiceKey: String? = SpeechController.savedVoiceKey() {
-        didSet {
-            UserDefaults.standard.set(voiceKey, forKey: "voice")
-            restartIfSpeaking()
-        }
+    /// Shared with Settings and the other windows.
+    var voiceKey: String? {
+        get { TextVoice.shared.key }
+        set { TextVoice.shared.key = newValue }
     }
 
     var voiceLabel: String {
         switch Voice.parse(voiceKey) {
         case (.piper, let id?):
             PiperService.shared.voices.first { $0.id == id }?.label ?? "\(id) — Piper"
+        case (.siri, _):
+            SiriVoice.label
         case (_, let id?):
             AVVoices.label(forID: id)
         default:
@@ -123,6 +124,7 @@ final class SpeechController {
 
     @ObservationIgnored private let systemEngine = SystemSpeechEngine()
     @ObservationIgnored private let piperEngine = ClipSpeechEngine(PiperSynthesizer())
+    @ObservationIgnored private let siriEngine = ClipSpeechEngine(SiriSynthesizer())
     @ObservationIgnored private var engine: SpeechEngine?
     @ObservationIgnored private var blocks: [String] = []
     @ObservationIgnored private var kinds: [BlockKind] = []
@@ -142,6 +144,7 @@ final class SpeechController {
     /// when the next paragraph starts.
     @ObservationIgnored private var needsReplan = false
     @ObservationIgnored private var replanObserver: NSObjectProtocol?
+    @ObservationIgnored private var voiceObserver: NSObjectProtocol?
 
     private static let settingsChangedNotification = Notification.Name("SpeechSettingsChanged")
 
@@ -152,7 +155,7 @@ final class SpeechController {
     var hasBlocks: Bool { !blocks.isEmpty && state != .idle }
 
     init() {
-        let engines: [(SpeechEngine, String)] = [(systemEngine, "macOS"), (piperEngine, "Piper")]
+        let engines: [(SpeechEngine, String)] = [(systemEngine, "macOS"), (piperEngine, "Piper"), (siriEngine, "Siri")]
         for (engine, name) in engines {
             engine.events = SpeechEngineEvents(
                 blockStarted: { [weak self] i in self?.blockStarted(i) },
@@ -162,6 +165,10 @@ final class SpeechController {
             )
         }
         applyVolume()
+        voiceObserver = NotificationCenter.default.addObserver(forName: TextVoice.changedNotification,
+                                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartIfSpeaking() }
+        }
         replanObserver = NotificationCenter.default.addObserver(forName: Self.settingsChangedNotification,
                                                                 object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -173,6 +180,7 @@ final class SpeechController {
     private func applyVolume() {
         systemEngine.volume = volume
         piperEngine.volume = volume
+        siriEngine.volume = volume
     }
 
     private func blockStarted(_ index: Int) {
@@ -282,8 +290,11 @@ final class SpeechController {
             (piperEngine, id)
         case (.system, let id):
             (systemEngine, id)
+        case (.siri, _):
+            (siriEngine, nil)
         default:
-            (systemEngine, nil)
+            // The Spoken Content voice: a Siri voice only reads through the older engine.
+            SiriVoice.isSystemVoice ? (siriEngine, nil) : (systemEngine, nil)
         }
     }
 
@@ -306,8 +317,26 @@ final class SpeechController {
         currentIndex = nil
         onFinish?()
     }
+}
 
-    private static func savedVoiceKey() -> String? {
+/// The voice of the text, chosen in the toolbar or in Settings, for every window.
+@MainActor
+@Observable
+final class TextVoice {
+    static let shared = TextVoice()
+    static let changedNotification = Notification.Name("TextVoiceChanged")
+
+    var key: String? = TextVoice.saved() {
+        didSet {
+            guard key != oldValue else { return }
+            UserDefaults.standard.set(key, forKey: "voice")
+            // Else the system voice (nil) would give way to it at the next launch.
+            UserDefaults.standard.removeObject(forKey: "voiceIdentifier")
+            NotificationCenter.default.post(name: Self.changedNotification, object: nil)
+        }
+    }
+
+    private static func saved() -> String? {
         if let key = UserDefaults.standard.string(forKey: "voice") { return key }
         // Before engines, the setting held a bare AVSpeech voice identifier.
         return UserDefaults.standard.string(forKey: "voiceIdentifier").map { "system:" + $0 }
@@ -316,13 +345,17 @@ final class SpeechController {
 
 /// A voice from any engine, as listed in the voice menu.
 struct Voice: Hashable, Identifiable {
-    enum Engine: String { case system, piper }
+    /// For titles, captions and quotes: nil there means "same as text".
+    static let siriKey = "siri:system"
+
+    enum Engine: String { case system, piper, siri }
 
     let engine: Engine
     let id: String
     let label: String
 
-    /// Stored selection and picker tag: "system:com.apple.voice…" or "piper:fr_FR-siwis-medium".
+    /// Stored selection and picker tag: "system:com.apple.voice…", "piper:fr_FR-siwis-medium",
+    /// or "siri:system" for the Spoken Content voice when it is a Siri voice.
     var key: String { "\(engine.rawValue):\(id)" }
 
     static func parse(_ key: String?) -> (Engine?, String?) {
