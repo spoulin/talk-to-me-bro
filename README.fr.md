@@ -110,6 +110,8 @@ Piper, un changement s'entend tout de suite ; avec une voix macOS, au paragraphe
 - Les **touches multimédia** marchent même quand l'app est en arrière-plan : ⏯ lit ou met en pause,
   ⏭ passe à l'article suivant de la playlist. Elles marchent aussi depuis les écouteurs, le Centre de
   contrôle ou les boutons Multimédia d'un Stream Deck, et l'article ou la vidéo s'affiche dans À l'écoute.
+  Le ⏭ Multimédia d'un Stream Deck, que macOS prend pour une touche maintenue, et ⏭ maintenu au clavier passent
+  aussi à l'article suivant.
 - **Pauses** (menu de la vitesse) : Aucune, Courtes, Moyennes (par défaut) ou Longues, après chaque
   paragraphe et, plus courtes, après chaque phrase, pour un débit moins monotone.
 

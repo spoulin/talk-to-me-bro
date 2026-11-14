@@ -20,6 +20,17 @@ final class NowPlaying {
         handle(commands.playCommand) { if !Self.isPlaying($0) { $0.togglePlayPause() } }
         handle(commands.pauseCommand) { if Self.isPlaying($0) { $0.togglePlayPause() } }
         handle(commands.nextTrackCommand) { $0.nextArticle() }
+        // A Stream Deck's Multimedia ⏭, or a press a bit long on the keyboard, arrives as a seek, not a
+        // next track. There is nothing to move fast through: it goes to the next article too.
+        commands.seekForwardCommand.addTarget { event in
+            guard (event as? MPSeekCommandEvent)?.type == .beginSeeking else { return .success }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if let model = NowPlaying.shared.model { model.nextArticle() }
+                }
+            }
+            return .success
+        }
     }
 
     /// A window starts an article or a video: Now Playing follows it.
@@ -68,12 +79,13 @@ final class NowPlaying {
 
     private func publish() {
         let center = MPNowPlayingInfoCenter.default()
-        let nextTrack = MPRemoteCommandCenter.shared().nextTrackCommand
+        let commands = MPRemoteCommandCenter.shared()
         // On the home page, nothing is playing: the media keys go back to the other apps.
         guard let model, model.phase != .empty else {
             center.nowPlayingInfo = nil
             center.playbackState = .stopped
-            nextTrack.isEnabled = false
+            commands.nextTrackCommand.isEnabled = false
+            commands.seekForwardCommand.isEnabled = false
             return
         }
         let playing = Self.isPlaying(model)
@@ -93,6 +105,7 @@ final class NowPlaying {
         center.nowPlayingInfo = info
         center.playbackState = playing ? .playing : .paused
         // Like the menu: ⏭ only when something waits in the playlist.
-        nextTrack.isEnabled = !model.playlist.items.isEmpty
+        commands.nextTrackCommand.isEnabled = !model.playlist.items.isEmpty
+        commands.seekForwardCommand.isEnabled = !model.playlist.items.isEmpty
     }
 }

@@ -109,7 +109,8 @@ once; with a macOS voice, from the next paragraph.
 - Links in the article open in your usual browser.
 - **Media keys** work even when the app is in the background: ⏯ plays or pauses, ⏭ goes to the next
   article of the playlist. They also work from headphones, Control Center, or a Stream Deck's
-  Multimedia buttons, and the article or video shows in Now Playing.
+  Multimedia buttons, and the article or video shows in Now Playing. A Stream Deck's Multimedia ⏭,
+  which macOS takes for a held key, and ⏭ held down on the keyboard also go to the next article.
 - **Pauses** (speed menu): None, Short, Medium (default) or Long, after each paragraph and, shorter,
   after each sentence, so the flow is less monotonous.
 
