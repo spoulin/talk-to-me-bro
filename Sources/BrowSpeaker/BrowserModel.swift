@@ -67,6 +67,10 @@ final class BrowserModel: NSObject {
     private(set) var blockLengths: [Int] = []
     /// The paragraph being read, or where reading stopped.
     private(set) var position = 0
+    /// The word being read in the current paragraph, for the mini player.
+    private(set) var spokenWord: NSRange?
+    /// Width over height of the video playing, for the mini player's shape.
+    private(set) var videoAspect = 16.0 / 9
     /// The home page's slideshow is on: closing an article goes back to it.
     var isSlideshowOn = false
     /// The slide shown, by address, and by position when the sources no longer have it.
@@ -96,6 +100,8 @@ final class BrowserModel: NSObject {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.addUserScript(WKUserScript(source: VideoPage.nextTrack, injectionTime: .atDocumentEnd,
                                                                 forMainFrameOnly: false, in: .defaultClient))
+        config.userContentController.addUserScript(WKUserScript(source: VideoPage.miniDrag, injectionTime: .atDocumentStart,
+                                                                forMainFrameOnly: false, in: .defaultClient))
         webView = WKWebView(frame: .zero, configuration: config)
 
         let readerConfig = WKWebViewConfiguration()
@@ -120,10 +126,17 @@ final class BrowserModel: NSObject {
 
         speech.onBlockStart = { [weak self] i in
             self?.position = i
+            self?.spokenWord = nil
             self?.readerJS("__bs.highlightBlock(\(i))")
         }
-        speech.onWord = { [weak self] i, r in self?.readerJS("__bs.highlightWord(\(i),\(r.location),\(r.length))") }
-        speech.onFinish = { [weak self] in self?.readerJS("__bs.clear()") }
+        speech.onWord = { [weak self] i, r in
+            if i == self?.position { self?.spokenWord = r }
+            self?.readerJS("__bs.highlightWord(\(i),\(r.location),\(r.length))")
+        }
+        speech.onFinish = { [weak self] in
+            self?.spokenWord = nil
+            self?.readerJS("__bs.clear()")
+        }
         speech.onComplete = { [weak self] in self?.articleFinished() }
 
         // Playlist items added before titles were kept: fill them in from the sources and history.
@@ -430,10 +443,11 @@ final class BrowserModel: NSObject {
         videoDuration = 0
         videoPlaying = false
         videoAd = false
+        videoAspect = 16.0 / 9
         videoPolling?.cancel()
         videoPolling = Task { [weak self] in
             while let self, self.isVideo, !Task.isCancelled {
-                struct State: Decodable { var t: Double; var d: Double; var p: Bool }
+                struct State: Decodable { var t: Double; var d: Double; var p: Bool; var r: Double? }
                 let script = self.isYouTube ? VideoPage.YouTube.state : VideoPage.state
                 if let json = await self.webView.evaluate(script, in: self.videoWorld),
                    let state = try? JSONDecoder().decode(State.self, from: Data(json.utf8)) {
@@ -444,6 +458,7 @@ final class BrowserModel: NSObject {
                         self.applyVideoVolume()
                     }
                     self.videoPlaying = state.p
+                    if let r = state.r, r > 0.4, r < 3.5, abs(r - self.videoAspect) > 0.01 { self.videoAspect = r }
                 }
                 // YouTube's player is in another site's frame: nothing to inspect there.
                 if !self.isYouTube {
@@ -539,6 +554,16 @@ final class BrowserModel: NSObject {
         return seconds < 60 ? "−\(Int(seconds)) s" : "−\(Int((seconds / 60).rounded())) min"
     }
 
+    /// A paragraph's text, for the mini player.
+    func blockText(_ index: Int) -> String? {
+        blocks.indices.contains(index) ? blocks[index] : nil
+    }
+
+    /// Escape on a video page: back from the mini player to the window, or else back home.
+    private func escape() {
+        if MiniPlayer.shared.isShowing(self) { MiniPlayer.shared.backToWindow() } else { closeArticle() }
+    }
+
     func zoom(by step: Int) {
         readerFontSize = min(max(readerFontSize + Double(step) * 2, 12), 44)
     }
@@ -590,7 +615,10 @@ extension BrowserModel: WKNavigationDelegate, WKScriptMessageHandler {
         // (not at the end of an ad, which may play in the same player).
         if message.name == "video" {
             if isVideo, !videoAd, message.body as? String == "ended" { articleFinished() }
-            if message.body as? String == "close" { closeArticle() }
+            if message.body as? String == "close" { escape() }
+            // Dragged anywhere on the video (see `VideoPage.miniDrag`): the mini player follows.
+            if message.body as? String == "dragstart" { MiniPlayer.shared.pageDragStarted(self) }
+            if message.body as? String == "dragend" { MiniPlayer.shared.pageDragEnded() }
             // ⏭ while a video plays (see `VideoPage.nextTrack`); like the menu, only with a playlist.
             if isVideo, message.body as? String == "next", !playlist.items.isEmpty { nextArticle() }
             return

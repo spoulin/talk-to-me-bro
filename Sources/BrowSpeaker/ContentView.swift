@@ -14,6 +14,8 @@ struct ContentView: View {
                                showsVideo: model.phase == .ready && model.isVideo)
                 if model.phase != .ready {
                     WelcomeView(model: model)
+                } else if model.isVideo, MiniPlayer.shared.isShowing(model) {
+                    MiniPlaceholder()
                 }
                 if isDropTargeted {
                     RoundedRectangle(cornerRadius: 14)
@@ -54,6 +56,10 @@ struct ContentView: View {
                             .frame(width: 400, height: 460)
                     }
                 if model.phase == .ready {
+                    Button { MiniPlayer.shared.toggle(model) } label: {
+                        Label("Mini Player", systemImage: MiniPlayer.shared.isShowing(model) ? "pip.exit" : "pip.enter")
+                    }
+                    .help("Mini Player (⇧⌘M)")
                     Button { model.openInBrowser() } label: { Label("Open in Browser", systemImage: "safari") }
                         .help("Open the original page in the browser")
                     Button { model.closeArticle() } label: { Label("Close Article", systemImage: "xmark") }
@@ -68,6 +74,7 @@ struct ContentView: View {
         }
         .focusedSceneValue(\.browser, model)
         .onDisappear {
+            MiniPlayer.shared.windowClosed(model)
             model.speech.stop()
             NowPlaying.shared.forget(model)
         }

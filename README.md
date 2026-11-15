@@ -103,6 +103,7 @@ once; with a macOS voice, from the next paragraph.
 | Listen to the copied link | ⇧⌘V |
 | Back to the home page (the playlist is kept) | Esc or ✕ |
 | Open the original page in the browser | ⇧⌘O |
+| Mini player, and back to the window | ⇧⌘M |
 | Text size | ⌘+ / ⌘- / ⌘0 |
 
 - While reading, click a paragraph to jump to it; ⌥-click always starts reading from it.
@@ -124,6 +125,25 @@ app goes back to the home page.
 - The playlist button in the toolbar (with the number of waiting articles) opens the list: drag to
   reorder, Delete or right-click to remove, *Clear* to empty it, double-click to play one now.
 - The playlist is kept when the app quits; the welcome screen offers to resume it.
+
+## Mini player
+
+Click **Mini Player** in the toolbar (or ⇧⌘M): what plays moves to a small floating window.
+
+- **A video** moves into it and keeps playing. The window keeps the video's proportions, and the main
+  window says "Playing in the mini player".
+- **An article** shows the paragraph being read in large type, the word highlighted, scrolling as the
+  reading goes on, like a teleprompter. Space plays or pauses, ← → move by paragraph; the playback
+  buttons show when the mouse is over it.
+- It stays on top of every app, on every desktop, over apps in full screen, and even when the app is
+  hidden (⌘H). It doesn't make Talk to me Bro the active app: you stay in your work.
+- Drag it from anywhere to move it, as in Corner Cinema: a simple click stays a click for the site, and
+  the site's progress and volume bars keep their own dragging. Near an edge of the screen it snaps to
+  it; it remembers its size and place, apart for articles and videos.
+- **Escape**, ⤢ or a double-click brings everything back to the window; ✕ closes it and pauses.
+  **Right-click** for its options: back to the window, close, opacity (100 % to 40 %).
+- *Settings › Mini Player*: **switch to the mini player when I go to another app** (while something
+  plays; it goes away when you come back), and its opacity.
 
 ## Sources
 
@@ -278,6 +298,8 @@ reading starts.
   next ones while the current one plays.
 - `SiriSynthesizer`: renders the Spoken Content voice, Siri voices included, with the Speech Synthesis
   Manager (`NewSpeechChannel`, `SpeakCFString`); AVSpeechSynthesizer doesn't offer Siri voices.
+- `MiniPlayer`: the floating window (a non-activating `NSPanel`). The page's `WKWebView` moves into it
+  for a video; for an article, the paragraph and the word being read come from `SpeechController`'s events.
 
 The interface is in English by default and in French when the Mac is set to French
 (`Resources/fr.lproj`, `ShareExtension/fr.lproj`). To add a language, add a `<lang>.lproj` folder with

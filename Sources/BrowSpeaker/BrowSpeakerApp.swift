@@ -58,6 +58,10 @@ struct BrowserCommands: Commands {
             Button("Actual Size") { model?.resetZoom() }
                 .keyboardShortcut("0")
             Divider()
+            Button("Mini Player") { if let model { MiniPlayer.shared.toggle(model) } }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(model?.phase != .ready)
+            Divider()
         }
 
         CommandMenu("Playback") {

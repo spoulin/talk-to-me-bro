@@ -103,6 +103,7 @@ Piper, un changement s'entend tout de suite ; avec une voix macOS, au paragraphe
 | Écouter le lien copié | ⇧⌘V |
 | Retour à l'accueil (la playlist est gardée) | Échap ou ✕ |
 | Ouvrir la page d'origine dans le navigateur | ⇧⌘O |
+| Mini lecteur, et retour à la fenêtre | ⇧⌘M |
 | Taille du texte | ⌘+ / ⌘- / ⌘0 |
 
 - Pendant la lecture, cliquer un paragraphe y saute ; ⌥-clic démarre la lecture à ce paragraphe.
@@ -125,6 +126,26 @@ Piper, un changement s'entend tout de suite ; avec une voix macOS, au paragraphe
   glisser pour réordonner, Suppr ou clic droit pour retirer, *Vider* pour tout enlever, double-clic pour
   écouter un article tout de suite.
 - La playlist est conservée quand on quitte l'app ; l'écran d'accueil propose de la reprendre.
+
+## Mini lecteur
+
+Cliquez sur **Mini lecteur** dans la barre d'outils (ou ⇧⌘M) : ce qui joue passe dans une petite
+fenêtre flottante.
+
+- **Une vidéo** y passe et continue de jouer. La fenêtre garde les proportions de la vidéo, et la
+  fenêtre principale indique « Lecture dans le mini lecteur ».
+- **Un article** y montre le paragraphe en cours en gros caractères, le mot lu surligné, qui défile au
+  fil de la lecture, comme un téléprompteur. Espace lit ou met en pause, ← → passent d'un paragraphe à
+  l'autre ; les boutons de lecture apparaissent quand la souris est dessus.
+- Il reste par-dessus toutes les apps, sur tous les bureaux, par-dessus les apps en plein écran, et même
+  quand l'app est masquée (⌘H). Il ne rend pas Talk to me Bro active : vous restez dans votre travail.
+- Glissez-le de n'importe où pour le déplacer, comme dans Corner Cinema : un simple clic reste un clic
+  pour le site, et ses barres de progression et de volume gardent leur propre glisser. Près d'un bord
+  de l'écran, il s'y aimante ; il retient sa taille et sa place, à part pour les articles et les vidéos.
+- **Échap**, ⤢ ou un double-clic ramène tout dans la fenêtre ; ✕ le ferme et met en pause.
+  **Clic droit** pour ses options : revenir à la fenêtre, fermer, opacité (100 % à 40 %).
+- *Réglages › Mini lecteur* : **passer au mini lecteur quand je vais dans une autre app** (pendant une
+  lecture ; il disparaît quand vous revenez), et son opacité.
 
 ## Sources
 
@@ -287,6 +308,8 @@ existante, passe en mode lecture et la lecture commence.
   préchargement des suivants.
 - `SiriSynthesizer` : génère la voix de *Contenu énoncé*, voix Siri comprises, avec l'ancienne API
   vocale (`NewSpeechChannel`, `SpeakCFString`) ; AVSpeechSynthesizer ne propose pas les voix Siri.
+- `MiniPlayer` : la fenêtre flottante (un `NSPanel` non activant). Le `WKWebView` de la page y passe
+  pour une vidéo ; pour un article, le paragraphe et le mot lus viennent des événements de `SpeechController`.
 
 L'interface est en anglais par défaut et en français si le Mac est en français
 (`Resources/fr.lproj`, `ShareExtension/fr.lproj`).

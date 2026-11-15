@@ -29,6 +29,9 @@ struct SettingsView: View {
 
             VideoSettings()
                 .tabItem { Label("Videos", systemImage: "film") }
+
+            MiniPlayerSettings()
+                .tabItem { Label("Mini Player", systemImage: "pip") }
         }
         .frame(width: 580, height: 540)
     }
@@ -155,6 +158,27 @@ private struct SlideshowSettings: View {
 }
 
 /// Music during ads, on video pages: a radio, a stream, a file or a folder, with its volume and fades.
+/// The mini player: switching to it on leaving the app, and how see-through it is.
+private struct MiniPlayerSettings: View {
+    @Bindable private var mini = MiniPlayer.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Switch to the mini player when I go to another app", isOn: $mini.switchesAutomatically)
+                LabeledContent("Opacity of the mini player") {
+                    Slider(value: $mini.opacity, in: 0.2...1)
+                }
+            } footer: {
+                Text("Only while an article or a video is playing; it goes away when you come back. The mini player stays on top of every app, on every desktop. Drag it to move it; Escape, ⤢ or a double-click brings it back to the window; right-click for its options.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
 private struct VideoSettings: View {
     @Bindable private var music = AdMusic.shared
 

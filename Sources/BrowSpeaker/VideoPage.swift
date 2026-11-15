@@ -75,9 +75,10 @@ enum VideoPage {
 
     private static let video = "(document.querySelector('.bs-video-box video') || document.querySelector('video'))"
 
-    /// {t: current time, d: duration, p: playing} for the player bar.
+    /// {t: current time, d: duration, p: playing, r: width / height} for the player bar and the mini player.
     static let state = """
-    (() => { const v = \(video); return v ? JSON.stringify({t: v.currentTime || 0, d: isFinite(v.duration) ? v.duration : 0, p: !v.paused && v.readyState > 2}) : "null"; })()
+    (() => { const v = \(video); return v ? JSON.stringify({t: v.currentTime || 0, d: isFinite(v.duration) ? v.duration : 0, p: !v.paused && v.readyState > 2,
+    r: v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 0}) : "null"; })()
     """
 
     /// One autoplay attempt: "playing" once a video of the page (or its ad) is
@@ -169,6 +170,62 @@ enum VideoPage {
       };
       claim();
       document.addEventListener("playing", claim, true);
+    })();
+    """
+
+    /// In every frame (YouTube's player is in its own): pressing and moving more than a few points
+    /// tells the app to move the mini player with the pointer, as in Corner Cinema. A simple click
+    /// stays a click for the site, and the site's progress and volume bars keep their own dragging
+    /// (for a video with the browser's own controls, its bottom band). The app ignores it outside the
+    /// mini player.
+    static let miniDrag = """
+    (() => {
+      const BARS = 'input[type=range], [role=slider], [role=progressbar], [class*="scrub" i], [class*="progress" i], [class*="slider" i], [class*="seek" i]';
+      const post = m => { try { window.webkit.messageHandlers.video.postMessage(m); } catch {} };
+      let press = null, dragging = false, swallowClick = false;
+      const onBar = e => {
+        const t = e.target;
+        if (!(t instanceof Element)) return false;
+        if (t.closest(BARS)) return true;
+        // The browser's own video controls are out of reach of scripts: keep their band.
+        if (t.tagName === "VIDEO" && t.controls) return e.clientY > t.getBoundingClientRect().bottom - 56;
+        return false;
+      };
+      const end = e => {
+        press = null;
+        if (!dragging) return;
+        dragging = false;
+        post("dragend");
+        // The release that ends a drag isn't a click for the site (it would pause the video).
+        swallowClick = true;
+        setTimeout(() => { swallowClick = false; }, 400);
+        if (e) e.stopImmediatePropagation();
+      };
+      addEventListener("pointerdown", e => {
+        press = null;
+        if (!e.isTrusted || e.button !== 0 || onBar(e)) return;
+        press = { x: e.screenX, y: e.screenY };
+      }, true);
+      addEventListener("pointermove", e => {
+        if (!press || dragging || !e.isTrusted) return;
+        if ((e.buttons & 1) === 0) { press = null; return; }
+        if (Math.hypot(e.screenX - press.x, e.screenY - press.y) < 5) return;
+        dragging = true;
+        try { document.documentElement.setPointerCapture(e.pointerId); } catch {}
+        post("dragstart");
+      }, true);
+      addEventListener("pointerup", end, true);
+      addEventListener("pointercancel", end, true);
+      addEventListener("lostpointercapture", () => end(), true);
+      addEventListener("click", e => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }, true);
+      for (const type of ["dragstart", "selectstart"]) {
+        addEventListener(type, e => { if (press || dragging) e.preventDefault(); }, true);
+      }
     })();
     """
 

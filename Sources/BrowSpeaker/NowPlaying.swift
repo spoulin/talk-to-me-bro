@@ -11,6 +11,8 @@ final class NowPlaying {
 
     /// The window that started playing last: the commands go to it.
     private weak var model: BrowserModel?
+    /// The window playing, for the mini player.
+    var current: BrowserModel? { model }
     /// Only the latest observation republishes.
     private var generation = 0
 
