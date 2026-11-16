@@ -128,7 +128,9 @@ app goes back to the home page.
 
 ## Mini player
 
-Click **Mini Player** in the toolbar (or ⇧⌘M): what plays moves to a small floating window.
+Click **Mini Player** in the toolbar (or ⇧⌘M): what plays moves to a small floating window, and Talk to
+me Bro hides itself, as with ⌘H. Its big window is out of the way, and you are back in the app you were
+using. Click Talk to me Bro in the Dock, or ⌘Tab to it, to bring everything back to the window.
 
 - **A video** moves into it and keeps playing. The window keeps the video's proportions, and the main
   window says "Playing in the mini player".

@@ -130,7 +130,9 @@ Piper, un changement s'entend tout de suite ; avec une voix macOS, au paragraphe
 ## Mini lecteur
 
 Cliquez sur **Mini lecteur** dans la barre d'outils (ou ⇧⌘M) : ce qui joue passe dans une petite
-fenêtre flottante.
+fenêtre flottante, et Talk to me Bro se masque, comme avec ⌘H. Sa grande fenêtre ne vous gêne plus, et
+vous revenez dans l'app que vous utilisiez. Cliquez sur Talk to me Bro dans le Dock, ou passez-y avec
+⌘Tab, pour tout ramener dans la fenêtre.
 
 - **Une vidéo** y passe et continue de jouer. La fenêtre garde les proportions de la vidéo, et la
   fenêtre principale indique « Lecture dans le mini lecteur ».

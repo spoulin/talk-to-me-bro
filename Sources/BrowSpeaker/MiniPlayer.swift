@@ -5,8 +5,9 @@ import WebKit
 /// The mini player: a small window that floats over every app, on every desktop (and over apps in
 /// full screen), without making Talk to me Bro the active app. A video moves into it and keeps
 /// playing; an article shows the paragraph being read, the word highlighted, scrolling as it goes.
-/// ⇧⌘M or the toolbar opens it, or going to another app when that is chosen in Settings; Escape,
-/// ⤢ or a double-click brings everything back to the window; right-click for its options.
+/// ⇧⌘M or the toolbar opens it and hides the app, as ⌘H would, or going to another app when that is
+/// chosen in Settings. Escape, ⤢, a double-click or coming back to the app brings everything back to
+/// the window; right-click for its options.
 @MainActor @Observable
 final class MiniPlayer {
     static let shared = MiniPlayer()
@@ -37,6 +38,8 @@ final class MiniPlayer {
     @ObservationIgnored private var webHome: NSView?
     /// Opened because the user went to another app: it goes away when they come back.
     @ObservationIgnored private var automatic = false
+    /// Opened by hand, so the app hid itself: coming back to it brings everything back to the window.
+    @ObservationIgnored private var hidApp = false
     @ObservationIgnored private var delegate: PanelDelegate?
     @ObservationIgnored private var settleTask: Task<Void, Never>?
     /// Moves made by the app itself: not snapped, not saved.
@@ -72,6 +75,12 @@ final class MiniPlayer {
         panel.alphaValue = opacity
         panel.orderFrontRegardless()
         panel.invalidateShadow()
+        // Opened by hand: the app steps aside like ⌘H, so its big window isn't left in the way and the
+        // app used before comes back to the front. The mini player stays (canHide is false).
+        if !automatic {
+            hidApp = true
+            NSApp.hide(nil)
+        }
     }
 
     /// ⤢, Escape, a double-click or ⇧⌘M: back in the window, still playing.
@@ -83,8 +92,10 @@ final class MiniPlayer {
         panel?.orderOut(nil)
         isShown = false
         automatic = false
+        hidApp = false
         generation += 1
         if activating, let window {
+            if NSApp.isHidden { NSApp.unhideWithoutActivation() }
             NSApp.activate()
             window.makeKeyAndOrderFront(nil)
         }
@@ -101,6 +112,7 @@ final class MiniPlayer {
         guard isShowing(model) else { return }
         panel?.orderOut(nil)
         isShown = false
+        hidApp = false
         generation += 1
     }
 
@@ -116,9 +128,12 @@ final class MiniPlayer {
         show(model, automatic: true)
     }
 
+    /// Back in the app (the Dock, ⌘Tab, a click on its window): the mini player was only for while
+    /// the user was elsewhere.
     private func appCameBack() {
-        guard isShown, automatic else { return }
-        backToWindow(activating: false)
+        guard isShown, automatic || hidApp else { return }
+        // Unhidden by the user: put the window that was playing in front of the others.
+        backToWindow(activating: hidApp)
     }
 
     // MARK: Following the window
