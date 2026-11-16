@@ -166,6 +166,7 @@ private struct MiniPlayerSettings: View {
         Form {
             Section {
                 Toggle("Switch to the mini player when I go to another app", isOn: $mini.switchesAutomatically)
+                Toggle("Snap the mini player to the edges of the screen", isOn: $mini.snapsToEdges)
                 LabeledContent("Opacity of the mini player") {
                     Slider(value: $mini.opacity, in: 0.2...1)
                 }

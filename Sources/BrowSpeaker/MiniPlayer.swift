@@ -22,6 +22,10 @@ final class MiniPlayer {
     var switchesAutomatically = UserDefaults.standard.bool(forKey: "miniAuto") {
         didSet { UserDefaults.standard.set(switchesAutomatically, forKey: "miniAuto") }
     }
+    /// Off: the window stays exactly where it is dropped, even partly off the screen.
+    var snapsToEdges = UserDefaults.standard.object(forKey: "miniSnap") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(snapsToEdges, forKey: "miniSnap") }
+    }
     /// 0.2…1.
     var opacity = UserDefaults.standard.object(forKey: "miniOpacity") as? Double ?? 1 {
         didSet {
@@ -260,7 +264,7 @@ final class MiniPlayer {
         UserDefaults.standard.set(NSStringFromRect(panel.frame), forKey: "miniFrame.\(mode.rawValue)")
     }
 
-    /// Once a move or a resize ends: close to an edge, it sticks to it.
+    /// Once a move or a resize ends: close to an edge, it sticks to it (unless snapping is off).
     fileprivate func moved() {
         guard !placing else { return }
         settleTask?.cancel()
@@ -271,7 +275,7 @@ final class MiniPlayer {
                 if Task.isCancelled { return }
             }
             guard !Task.isCancelled else { return }
-            snap()
+            if snapsToEdges { snap() }
             savePlace()
         }
     }
@@ -353,6 +357,9 @@ final class MiniPlayer {
         }
         automatic.state = switchesAutomatically ? .on : .off
         menu.addItem(automatic)
+        let snapping = ActionItem(String(localized: "Snap to Screen Edges")) { MiniPlayer.shared.snapsToEdges.toggle() }
+        snapping.state = snapsToEdges ? .on : .off
+        menu.addItem(snapping)
         return menu
     }
 

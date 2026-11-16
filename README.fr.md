@@ -143,11 +143,12 @@ vous revenez dans l'app que vous utilisiez. Cliquez sur Talk to me Bro dans le D
   quand l'app est masquée (⌘H). Il ne rend pas Talk to me Bro active : vous restez dans votre travail.
 - Glissez-le de n'importe où pour le déplacer, comme dans Corner Cinema : un simple clic reste un clic
   pour le site, et ses barres de progression et de volume gardent leur propre glisser. Près d'un bord
-  de l'écran, il s'y aimante ; il retient sa taille et sa place, à part pour les articles et les vidéos.
+  de l'écran, il s'y aimante, sauf si **Aimanter aux bords de l'écran** est désactivé (clic droit, ou
+  *Réglages › Mini lecteur*) ; il retient sa taille et sa place, à part pour les articles et les vidéos.
 - **Échap**, ⤢ ou un double-clic ramène tout dans la fenêtre ; ✕ le ferme et met en pause.
   **Clic droit** pour ses options : revenir à la fenêtre, fermer, opacité (100 % à 40 %).
 - *Réglages › Mini lecteur* : **passer au mini lecteur quand je vais dans une autre app** (pendant une
-  lecture ; il disparaît quand vous revenez), et son opacité.
+  lecture ; il disparaît quand vous revenez), l'aimantation aux bords de l'écran, et son opacité.
 
 ## Sources
 

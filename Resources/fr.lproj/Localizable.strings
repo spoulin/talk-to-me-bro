@@ -255,6 +255,8 @@
 "Opacity of the mini player" = "Opacité du mini lecteur";
 "Switch to the Mini Player When I Go to Another App" = "Passer au mini lecteur quand je vais dans une autre app";
 "Switch to the mini player when I go to another app" = "Passer au mini lecteur quand je vais dans une autre app";
+"Snap to Screen Edges" = "Aimanter aux bords de l’écran";
+"Snap the mini player to the edges of the screen" = "Aimanter le mini lecteur aux bords de l’écran";
 "Playing in the mini player" = "Lecture dans le mini lecteur";
 "Loading…" = "Chargement…";
 "Only while an article or a video is playing; it goes away when you come back. The mini player stays on top of every app, on every desktop. Drag it to move it; Escape, ⤢ or a double-click brings it back to the window; right-click for its options." = "Seulement pendant la lecture d’un article ou d’une vidéo ; il disparaît quand vous revenez. Le mini lecteur reste par-dessus toutes les apps, sur tous les bureaux. Glissez-le pour le déplacer ; Échap, ⤢ ou un double-clic le ramène dans la fenêtre ; clic droit pour ses options.";

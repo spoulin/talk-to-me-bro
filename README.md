@@ -141,11 +141,12 @@ using. Click Talk to me Bro in the Dock, or ⌘Tab to it, to bring everything ba
   hidden (⌘H). It doesn't make Talk to me Bro the active app: you stay in your work.
 - Drag it from anywhere to move it, as in Corner Cinema: a simple click stays a click for the site, and
   the site's progress and volume bars keep their own dragging. Near an edge of the screen it snaps to
-  it; it remembers its size and place, apart for articles and videos.
+  it, unless **Snap to Screen Edges** is off (right-click, or *Settings › Mini Player*); it remembers its
+  size and place, apart for articles and videos.
 - **Escape**, ⤢ or a double-click brings everything back to the window; ✕ closes it and pauses.
   **Right-click** for its options: back to the window, close, opacity (100 % to 40 %).
 - *Settings › Mini Player*: **switch to the mini player when I go to another app** (while something
-  plays; it goes away when you come back), and its opacity.
+  plays; it goes away when you come back), snapping to the edges of the screen, and its opacity.
 
 ## Sources
 
