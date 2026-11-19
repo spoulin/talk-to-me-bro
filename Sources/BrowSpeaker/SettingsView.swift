@@ -11,6 +11,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                OtherAppsSettings()
                 VoiceRolesSettings()
                 VoiceEffectSettings()
                 PiperSettings()
@@ -34,6 +35,21 @@ struct SettingsView: View {
                 .tabItem { Label("Mini Player", systemImage: "pip") }
         }
         .frame(width: 580, height: 540)
+    }
+}
+
+/// Music or a podcast playing in another app stops when the app starts to read.
+private struct OtherAppsSettings: View {
+    @AppStorage(NowPlaying.pausesOtherAppsKey) private var pausesOtherApps = false
+
+    var body: some View {
+        Section {
+            Toggle("Pause other apps before reading or playing a video", isOn: $pausesOtherApps)
+        } footer: {
+            Text("Like the ⏸ key: the music or podcast playing in another app pauses when an article or a video starts, or when you resume it.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

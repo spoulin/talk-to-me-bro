@@ -289,6 +289,7 @@ final class BrowserModel: NSObject {
     }
 
     private func start(_ page: URL) {
+        NowPlaying.shared.pauseOtherApps()
         NowPlaying.shared.follow(self)
         speech.stop()
         startedFromSlideshow = false
@@ -454,6 +455,8 @@ final class BrowserModel: NSObject {
                     self.videoTime = state.t
                     self.videoDuration = state.d
                     if state.p, !self.videoPlaying {
+                        // Also when started from the page's own player.
+                        NowPlaying.shared.pauseOtherApps()
                         self.applyVideoSpeed()
                         self.applyVideoVolume()
                     }
@@ -512,6 +515,7 @@ final class BrowserModel: NSObject {
     // MARK: Playback
 
     func togglePlayPause() {
+        if isVideo ? !videoPlaying : speech.state != .speaking { NowPlaying.shared.pauseOtherApps() }
         NowPlaying.shared.follow(self)
         if isVideo { return runVideo(VideoPage.togglePlayback, youtube: VideoPage.YouTube.togglePlayback) }
         switch speech.state {
@@ -523,6 +527,8 @@ final class BrowserModel: NSObject {
 
     func seek(to index: Int) {
         guard blocks.indices.contains(index) else { return }
+        // A jump always reads: from a pause, or from the start, the other apps stop first.
+        if speech.state != .speaking { NowPlaying.shared.pauseOtherApps() }
         position = index
         if speech.hasBlocks { speech.jump(to: index) } else { speech.speak(blocks, kinds: kinds, language: language, from: index) }
     }

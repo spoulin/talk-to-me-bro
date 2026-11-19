@@ -20,7 +20,11 @@ final class NowPlaying {
         let commands = MPRemoteCommandCenter.shared()
         handle(commands.togglePlayPauseCommand) { $0.togglePlayPause() }
         handle(commands.playCommand) { if !Self.isPlaying($0) { $0.togglePlayPause() } }
-        handle(commands.pauseCommand) { if Self.isPlaying($0) { $0.togglePlayPause() } }
+        handle(commands.pauseCommand) {
+            // Our own pause, sent to the other apps, can come back to us: it is not for us.
+            guard Date.now >= NowPlaying.shared.ignoresPauseUntil else { return }
+            if Self.isPlaying($0) { $0.togglePlayPause() }
+        }
         handle(commands.nextTrackCommand) { $0.nextArticle() }
         // A Stream Deck's Multimedia ⏭, or a press a bit long on the keyboard, arrives as a seek, not a
         // next track. There is nothing to move fast through: it goes to the next article too.
@@ -34,6 +38,29 @@ final class NowPlaying {
             return .success
         }
     }
+
+    // MARK: Pausing the other apps
+
+    /// Settings: before reading or a video starts, pause what another app plays (music, a podcast…).
+    static let pausesOtherAppsKey = "pauseOtherApps"
+    private var ignoresPauseUntil = Date.distantPast
+
+    /// Sends the system's Pause, like the ⏸ key, to the app playing now. Pause, not Play/Pause:
+    /// with nothing playing, nothing happens. macOS no longer tells other apps what plays, but
+    /// still takes this command.
+    func pauseOtherApps() {
+        guard UserDefaults.standard.bool(forKey: Self.pausesOtherAppsKey), let send = Self.sendCommand else { return }
+        ignoresPauseUntil = .now.addingTimeInterval(1.5)
+        _ = send(1, nil)  // kMRPause
+    }
+
+    private typealias SendCommand = @convention(c) (UInt32, CFDictionary?) -> Bool
+    private static let sendCommand: SendCommand? = {
+        guard let framework = dlopen("/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote", RTLD_LAZY),
+              let symbol = dlsym(framework, "MRMediaRemoteSendCommand")
+        else { return nil }
+        return unsafeBitCast(symbol, to: SendCommand.self)
+    }()
 
     /// A window starts an article or a video: Now Playing follows it.
     func follow(_ model: BrowserModel) {
